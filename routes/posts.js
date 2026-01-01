@@ -6,7 +6,7 @@ const multer = require("multer")
 const storage = multer.memoryStorage()
 
 // File size limit: 3MB per file (to stay under Vercel's 4.5MB body limit)
-const upload = multer({ 
+const upload = multer({
     storage,
     limits: {
         fileSize: 3 * 1024 * 1024 // 3MB
@@ -37,11 +37,11 @@ const handleMulterError = (err, req, res, next) => {
 postRouter.post("/", checkAuth, upload.fields([
     { name: "photos", maxCount: 10 },
     { name: "videos", maxCount: 5 }
-]), handleMulterError, async(req, res) => {
-        console.log('req.files:', req.files);
+]), handleMulterError, async (req, res) => {
+    console.log('req.files:', req.files);
     try {
-        const { 
-            postType, title, description, location, 
+        const {
+            postType, title, description, location,
             price, amenities, capacity, availability,
             planName, priceTotal, pricePerPerson, maxPeople,
             duration, difficulty, categories, isFeatured
@@ -68,7 +68,7 @@ postRouter.post("/", checkAuth, upload.fields([
         // Validate and sanitize location coordinates
         if (parsedLocation && parsedLocation.coordinates) {
             // Check if coordinates is a valid GeoJSON Point
-            if (parsedLocation.coordinates.type === 'Point' && 
+            if (parsedLocation.coordinates.type === 'Point' &&
                 Array.isArray(parsedLocation.coordinates.coordinates) &&
                 parsedLocation.coordinates.coordinates.length === 2 &&
                 parsedLocation.coordinates.coordinates.every(coord => typeof coord === 'number' && !isNaN(coord))) {
@@ -117,26 +117,26 @@ postRouter.post("/", checkAuth, upload.fields([
         // Validation
         // Acceptable post types: experience, service, trek (plan moved to itineraries API)
         if (!postType || !['experience', 'service', 'trek'].includes(postType)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid post type. Must be one of: 'experience', 'service', 'trek'. Use /api/itineraries for trip plans." 
+            return res.status(400).json({
+                success: false,
+                message: "Invalid post type. Must be one of: 'experience', 'service', 'trek'. Use /api/itineraries for trip plans."
             })
         }
 
         if (!title || !description) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Title and description are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Title and description are required"
             })
         }
 
         // Guests can post 'experience'. Hosts can post any type including 'service' and 'trek'.
-        if (req.user.role === 'guest' && postType !== 'experience') {
-            return res.status(403).json({
-                success: false,
-                message: "Guests can only post 'experience'. Hosts can post 'service' and 'trek' as well. Use /api/itineraries for trip plans."
-            });
-        }
+        // if (req.user.role === 'guest' && postType !== 'experience') {
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: "Guests can only post 'experience'. Hosts can post 'service' and 'trek' as well. Use /api/itineraries for trip plans."
+        //     });
+        // }
 
         // Build price and capacity objects with new fields
         const priceObj = {
@@ -173,34 +173,34 @@ postRouter.post("/", checkAuth, upload.fields([
             isFeatured: isFeatured === 'true' || isFeatured === true || false
         })
 
-        return res.status(201).json({ 
-            success: true, 
+        return res.status(201).json({
+            success: true,
             message: "Post created successfully",
-            post 
+            post
         })
     } catch (error) {
         console.error("Create post error:", error)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error creating post",
-            error: error.message 
+            error: error.message
         })
     }
 })
 
 // GET ALL POSTS - Public (with filtering)
-postRouter.get("/", async(req, res) => {
+postRouter.get("/", async (req, res) => {
     try {
-        const { 
+        const {
             postType, userRole, city, country, state,
-            minPrice, maxPrice, status, 
+            minPrice, maxPrice, status,
             difficulty, categories, isFeatured,
-            page = 1, limit = 20 
+            page = 1, limit = 20
         } = req.query
 
         // Build filter query
         const filter = {}
-        
+
         if (postType) filter.postType = postType
         if (userRole) filter.userRole = userRole
         if (city) filter['location.city'] = new RegExp(city, 'i')
@@ -208,7 +208,7 @@ postRouter.get("/", async(req, res) => {
         if (country) filter['location.country'] = new RegExp(country, 'i')
         if (status) filter.status = status
         else filter.status = 'active' // Default to active posts only
-        
+
         // Trek-specific filters
         if (difficulty) filter.difficulty = difficulty
         if (categories) filter.categories = { $in: categories.split(',') }
@@ -222,7 +222,7 @@ postRouter.get("/", async(req, res) => {
         }
 
         const skip = (Number(page) - 1) * Number(limit)
-        
+
         const posts = await Post.find(filter)
             .populate('user', 'firstname lastname email role')
             .sort({ isFeatured: -1, createdAt: -1 })
@@ -231,13 +231,13 @@ postRouter.get("/", async(req, res) => {
 
         const total = await Post.countDocuments(filter)
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: posts.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            posts 
+            posts
         })
     } catch (error) {
         console.error("Get posts error:", error)
@@ -248,15 +248,15 @@ postRouter.get("/", async(req, res) => {
 // Note: GET /treks endpoint is now in the DEDICATED TREK ENDPOINTS section below
 
 // GET ALL TREKS (Simplified) - Public
-postRouter.get("/all/treks", async(req, res) => {
+postRouter.get("/all/treks", async (req, res) => {
     try {
         const { limit = 50, page = 1 } = req.query
 
         const skip = (Number(page) - 1) * Number(limit)
 
-        const posts = await Post.find({ 
-            postType: 'trek', 
-            status: 'active' 
+        const posts = await Post.find({
+            postType: 'trek',
+            status: 'active'
         })
             .populate('user', 'firstname lastname email role')
             .sort({ isFeatured: -1, createdAt: -1 })
@@ -265,13 +265,13 @@ postRouter.get("/all/treks", async(req, res) => {
 
         const total = await Post.countDocuments({ postType: 'trek', status: 'active' })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: posts.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            posts 
+            posts
         })
     } catch (error) {
         console.error("Get all treks error:", error)
@@ -280,23 +280,23 @@ postRouter.get("/all/treks", async(req, res) => {
 })
 
 // GET FEATURED TREKS - Public
-postRouter.get("/featured/treks", async(req, res) => {
+postRouter.get("/featured/treks", async (req, res) => {
     try {
         const { limit = 20 } = req.query
 
-        const posts = await Post.find({ 
-            postType: 'trek', 
-            isFeatured: true, 
-            status: 'active' 
+        const posts = await Post.find({
+            postType: 'trek',
+            isFeatured: true,
+            status: 'active'
         })
             .populate('user', 'firstname lastname email role')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: posts.length,
-            posts 
+            posts
         })
     } catch (error) {
         console.error("Get featured treks error:", error)
@@ -306,7 +306,7 @@ postRouter.get("/featured/treks", async(req, res) => {
 
 // GET TOP-RATED TREKS - Public
 // Returns treks sorted by average rating from reviews
-postRouter.get("/top-rated/treks", async(req, res) => {
+postRouter.get("/top-rated/treks", async (req, res) => {
     try {
         const { limit = 10, minRating = 0 } = req.query
 
@@ -314,7 +314,7 @@ postRouter.get("/top-rated/treks", async(req, res) => {
         const topRatedTreks = await Review.aggregate([
             {
                 // Only include reviews that have a post reference
-                $match: { 
+                $match: {
                     post: { $exists: true, $ne: null }
                 }
             },
@@ -414,7 +414,7 @@ postRouter.get("/top-rated/treks", async(req, res) => {
             }
         ])
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: topRatedTreks.length,
             treks: topRatedTreks
@@ -427,11 +427,11 @@ postRouter.get("/top-rated/treks", async(req, res) => {
 
 // GET NEARBY TREKS - Public
 // Find treks near a given location using coordinates
-postRouter.get("/nearby/treks", async(req, res) => {
+postRouter.get("/nearby/treks", async (req, res) => {
     try {
-        const { 
-            latitude, 
-            longitude, 
+        const {
+            latitude,
+            longitude,
             maxDistance = 100000,  // Default 100km in meters
             limit = 20,
             difficulty,
@@ -442,9 +442,9 @@ postRouter.get("/nearby/treks", async(req, res) => {
 
         // Validate required parameters
         if (!latitude || !longitude) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Latitude and longitude are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Latitude and longitude are required"
             })
         }
 
@@ -453,9 +453,9 @@ postRouter.get("/nearby/treks", async(req, res) => {
 
         // Validate coordinate values
         if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid latitude or longitude values" 
+            return res.status(400).json({
+                success: false,
+                message: "Invalid latitude or longitude values"
             })
         }
 
@@ -477,7 +477,7 @@ postRouter.get("/nearby/treks", async(req, res) => {
         // Add optional filters
         if (difficulty) filter.difficulty = difficulty
         if (categories) filter.categories = { $in: categories.split(',') }
-        
+
         // Price range filter
         if (minPrice || maxPrice) {
             filter['price.perPerson'] = {}
@@ -492,7 +492,7 @@ postRouter.get("/nearby/treks", async(req, res) => {
         // Calculate distance for each trek (in kilometers)
         const treksWithDistance = treks.map(trek => {
             const trekObj = trek.toObject()
-            
+
             // Calculate distance if coordinates exist
             if (trek.location?.coordinates?.coordinates) {
                 const [trekLng, trekLat] = trek.location.coordinates.coordinates
@@ -500,11 +500,11 @@ postRouter.get("/nearby/treks", async(req, res) => {
                 trekObj.distance = Math.round(distance * 10) / 10  // Round to 1 decimal
                 trekObj.distanceUnit = 'km'
             }
-            
+
             return trekObj
         })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: treksWithDistance.length,
             searchLocation: {
@@ -516,9 +516,9 @@ postRouter.get("/nearby/treks", async(req, res) => {
         })
     } catch (error) {
         console.error("Get nearby treks error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching nearby treks" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching nearby treks"
         })
     }
 })
@@ -528,14 +528,14 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371 // Earth's radius in kilometers
     const dLat = toRadians(lat2 - lat1)
     const dLon = toRadians(lon2 - lon1)
-    
+
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2)
-    
+        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     const distance = R * c
-    
+
     return distance
 }
 
@@ -544,16 +544,16 @@ function toRadians(degrees) {
 }
 
 // GET USER'S POSTS - Public (view anyone's posts)
-postRouter.get("/user/:userId", async(req, res) => {
+postRouter.get("/user/:userId", async (req, res) => {
     try {
         const posts = await Post.find({ user: req.params.userId })
             .populate('user', 'firstname lastname email role')
             .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: posts.length,
-            posts 
+            posts
         })
     } catch (error) {
         console.error("Get user posts error:", error)
@@ -562,15 +562,15 @@ postRouter.get("/user/:userId", async(req, res) => {
 })
 
 // GET MY POSTS - Authenticated user's own posts
-postRouter.get("/my/posts", checkAuth, async(req, res) => {
+postRouter.get("/my/posts", checkAuth, async (req, res) => {
     try {
         const posts = await Post.find({ user: req.user.userId })
             .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: posts.length,
-            posts 
+            posts
         })
     } catch (error) {
         console.error("Get my posts error:", error)
@@ -579,7 +579,7 @@ postRouter.get("/my/posts", checkAuth, async(req, res) => {
 })
 
 // UPDATE POST - Only post owner
-postRouter.put("/:id", checkAuth, async(req, res) => {
+postRouter.put("/:id", checkAuth, async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
 
@@ -589,14 +589,14 @@ postRouter.put("/:id", checkAuth, async(req, res) => {
 
         // Check if user is the owner
         if (post.user.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only edit your own posts" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only edit your own posts"
             })
         }
 
-        const { 
-            title, description, images, location, 
+        const {
+            title, description, images, location,
             price, amenities, capacity, availability, status,
             planName, priceTotal, pricePerPerson, maxPeople,
             duration, difficulty, isFeatured
@@ -609,7 +609,7 @@ postRouter.put("/:id", checkAuth, async(req, res) => {
                 if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
                     return JSON.parse(value)
                 }
-            } catch (e) {}
+            } catch (e) { }
             return value
         }
 
@@ -645,7 +645,7 @@ postRouter.put("/:id", checkAuth, async(req, res) => {
 
         if (availability) post.availability = { ...post.availability, ...availability }
         if (status) post.status = status
-        
+
         // Update trek-specific fields
         if (duration) post.duration = parseIfJson(duration)
         if (difficulty) post.difficulty = difficulty
@@ -653,10 +653,10 @@ postRouter.put("/:id", checkAuth, async(req, res) => {
 
         await post.save()
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: "Post updated successfully",
-            post 
+            post
         })
     } catch (error) {
         console.error("Update post error:", error)
@@ -665,7 +665,7 @@ postRouter.put("/:id", checkAuth, async(req, res) => {
 })
 
 // DELETE POST - Only post owner
-postRouter.delete("/:id", checkAuth, async(req, res) => {
+postRouter.delete("/:id", checkAuth, async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
 
@@ -675,9 +675,9 @@ postRouter.delete("/:id", checkAuth, async(req, res) => {
 
         // Check if user is the owner
         if (post.user.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only delete your own posts" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete your own posts"
             })
         }
 
@@ -708,9 +708,9 @@ postRouter.delete("/:id", checkAuth, async(req, res) => {
 
         await Post.findByIdAndDelete(req.params.id)
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Post deleted successfully" 
+        return res.status(200).json({
+            success: true,
+            message: "Post deleted successfully"
         })
     } catch (error) {
         console.error("Delete post error:", error)
@@ -725,10 +725,10 @@ postRouter.delete("/:id", checkAuth, async(req, res) => {
 postRouter.post("/experiences", checkAuth, upload.fields([
     { name: "photos", maxCount: 10 },
     { name: "videos", maxCount: 5 }
-]), handleMulterError, async(req, res) => {
+]), handleMulterError, async (req, res) => {
     try {
-        const { 
-            title, description, location, 
+        const {
+            title, description, location,
             pricePerPerson, maxPeople,
             duration, difficulty, categories, isFeatured,
             amenities, availability,
@@ -774,29 +774,29 @@ postRouter.post("/experiences", checkAuth, upload.fields([
         if (req.files && req.files["photos"]) {
             for (const file of req.files["photos"]) {
                 const result = await uploadToCloudinary(file, "image");
-                photoUrls.push({ 
-                    url: result.secure_url, 
-                    public_id: result.public_id, 
-                    resource_type: result.resource_type || 'image' 
+                photoUrls.push({
+                    url: result.secure_url,
+                    public_id: result.public_id,
+                    resource_type: result.resource_type || 'image'
                 });
             }
         }
         if (req.files && req.files["videos"]) {
             for (const file of req.files["videos"]) {
                 const result = await uploadToCloudinary(file, "video");
-                videoUrls.push({ 
-                    url: result.secure_url, 
-                    public_id: result.public_id, 
-                    resource_type: result.resource_type || 'video' 
+                videoUrls.push({
+                    url: result.secure_url,
+                    public_id: result.public_id,
+                    resource_type: result.resource_type || 'video'
                 });
             }
         }
 
         // Validation
         if (!title || !description) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Title and description are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Title and description are required"
             })
         }
 
@@ -806,13 +806,13 @@ postRouter.post("/experiences", checkAuth, upload.fields([
         if (state) locationObj.state = state
         if (country) locationObj.country = country
         if (meetingPoint) locationObj.meetingPoint = meetingPoint
-        
+
         console.log("Location before cleanup:", JSON.stringify(locationObj));
-        
+
         // Validate GeoJSON coordinates structure
         if (locationObj.coordinates) {
             // Check if coordinates is a valid GeoJSON Point
-            if (locationObj.coordinates.type === 'Point' && 
+            if (locationObj.coordinates.type === 'Point' &&
                 Array.isArray(locationObj.coordinates.coordinates) &&
                 locationObj.coordinates.coordinates.length === 2) {
                 // Valid GeoJSON, keep it
@@ -823,7 +823,7 @@ postRouter.post("/experiences", checkAuth, upload.fields([
                 delete locationObj.coordinates;
             }
         }
-        
+
         console.log("Location after cleanup:", JSON.stringify(locationObj));
 
         // Build price object
@@ -860,16 +860,16 @@ postRouter.post("/experiences", checkAuth, upload.fields([
             isFeatured: isFeatured === 'true' || isFeatured === true || false
         })
 
-        return res.status(201).json({ 
-            success: true, 
+        return res.status(201).json({
+            success: true,
             message: "Experience created successfully",
-            experience 
+            experience
         })
     } catch (error) {
         console.error("Create experience error:", error)
         console.error("Error stack:", error.stack)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error creating experience",
             error: error.message,
             details: process.env.NODE_ENV === 'development' ? error.stack : undefined
@@ -878,21 +878,21 @@ postRouter.post("/experiences", checkAuth, upload.fields([
 })
 
 // GET ALL EXPERIENCES - Automatically filtered to postType: "experience"
-postRouter.get("/experiences", async(req, res) => {
+postRouter.get("/experiences", async (req, res) => {
     try {
-        const { 
+        const {
             city, country, state,
             minPrice, maxPrice, status,
             difficulty, categories, isFeatured,
-            page = 1, limit = 20 
+            page = 1, limit = 20
         } = req.query
 
         // Build filter query with automatic experience filter
-        const filter = { 
+        const filter = {
             postType: 'experience',  // Automatically filter for experiences only
             status: status || 'active'
         }
-        
+
         if (city) filter['location.city'] = new RegExp(city, 'i')
         if (state) filter['location.state'] = new RegExp(state, 'i')
         if (country) filter['location.country'] = new RegExp(country, 'i')
@@ -908,7 +908,7 @@ postRouter.get("/experiences", async(req, res) => {
         }
 
         const skip = (Number(page) - 1) * Number(limit)
-        
+
         const experiences = await Post.find(filter)
             .populate('user', 'firstname lastname email role')
             .sort({ isFeatured: -1, createdAt: -1 })
@@ -917,100 +917,100 @@ postRouter.get("/experiences", async(req, res) => {
 
         const total = await Post.countDocuments(filter)
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: experiences.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            experiences 
+            experiences
         })
     } catch (error) {
         console.error("Get experiences error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching experiences" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching experiences"
         })
     }
 })
 
 // GET FEATURED EXPERIENCES
-postRouter.get("/experiences/featured/list", async(req, res) => {
+postRouter.get("/experiences/featured/list", async (req, res) => {
     try {
         const { limit = 10 } = req.query
 
-        const experiences = await Post.find({ 
+        const experiences = await Post.find({
             postType: 'experience',
             isFeatured: true,
             status: 'active'
         })
-        .populate('user', 'firstname lastname email role')
-        .sort({ createdAt: -1 })
-        .limit(Number(limit))
+            .populate('user', 'firstname lastname email role')
+            .sort({ createdAt: -1 })
+            .limit(Number(limit))
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: experiences.length,
-            experiences 
+            experiences
         })
     } catch (error) {
         console.error("Get featured experiences error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching featured experiences" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching featured experiences"
         })
     }
 })
 
 // GET MY EXPERIENCES - Experiences posted by logged-in user
-postRouter.get("/experiences/my/list", checkAuth, async(req, res) => {
+postRouter.get("/experiences/my/list", checkAuth, async (req, res) => {
     try {
-        const experiences = await Post.find({ 
+        const experiences = await Post.find({
             user: req.user.userId,
             postType: 'experience'
         }).sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: experiences.length,
-            experiences 
+            experiences
         })
     } catch (error) {
         console.error("Get my experiences error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching your experiences" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching your experiences"
         })
     }
 })
 
 // GET EXPERIENCES BY USER ID
-postRouter.get("/experiences/user/:userId", async(req, res) => {
+postRouter.get("/experiences/user/:userId", async (req, res) => {
     try {
         const experiences = await Post.find({
             user: req.params.userId,
             postType: 'experience',
             status: 'active'
         })
-        .populate('user', 'firstname lastname email role')
-        .sort({ createdAt: -1 })
+            .populate('user', 'firstname lastname email role')
+            .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: experiences.length,
-            experiences 
+            experiences
         })
     } catch (error) {
         console.error("Get user experiences error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching user experiences" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching user experiences"
         })
     }
 })
 
 // GET SINGLE EXPERIENCE BY ID - Must come AFTER specific routes
-postRouter.get("/experiences/:id", async(req, res) => {
+postRouter.get("/experiences/:id", async (req, res) => {
     try {
         const experience = await Post.findOne({
             _id: req.params.id,
@@ -1018,52 +1018,52 @@ postRouter.get("/experiences/:id", async(req, res) => {
         }).populate('user', 'firstname lastname email role')
 
         if (!experience) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Experience not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Experience not found"
             })
         }
 
-        return res.status(200).json({ 
-            success: true, 
-            experience 
+        return res.status(200).json({
+            success: true,
+            experience
         })
     } catch (error) {
         console.error("Get experience error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching experience" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching experience"
         })
     }
 })
 
 // GET EXPERIENCES BY USER ID - Public
-postRouter.get("/experiences/user/:userId", async(req, res) => {
+postRouter.get("/experiences/user/:userId", async (req, res) => {
     try {
         const experiences = await Post.find({
             user: req.params.userId,
             postType: 'experience',
             status: 'active'
         })
-        .populate('user', 'firstname lastname email role')
-        .sort({ createdAt: -1 })
+            .populate('user', 'firstname lastname email role')
+            .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: experiences.length,
-            experiences 
+            experiences
         })
     } catch (error) {
         console.error("Get user experiences error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching user experiences" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching user experiences"
         })
     }
 })
 
 // UPDATE EXPERIENCE - Only owner can update
-postRouter.put("/experiences/:id", checkAuth, async(req, res) => {
+postRouter.put("/experiences/:id", checkAuth, async (req, res) => {
     try {
         const experience = await Post.findOne({
             _id: req.params.id,
@@ -1071,21 +1071,21 @@ postRouter.put("/experiences/:id", checkAuth, async(req, res) => {
         })
 
         if (!experience) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Experience not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Experience not found"
             })
         }
 
         // Check ownership
         if (experience.user.toString() !== req.user.userId && req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only update your own experiences" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only update your own experiences"
             })
         }
 
-        const { 
+        const {
             title, description, location, price, amenities,
             capacity, availability, categories, isFeatured, status,
             difficulty, duration
@@ -1098,7 +1098,7 @@ postRouter.put("/experiences/:id", checkAuth, async(req, res) => {
                 if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
                     return JSON.parse(value)
                 }
-            } catch (e) {}
+            } catch (e) { }
             return value
         }
 
@@ -1118,22 +1118,22 @@ postRouter.put("/experiences/:id", checkAuth, async(req, res) => {
 
         await experience.save()
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             message: "Experience updated successfully",
-            experience 
+            experience
         })
     } catch (error) {
         console.error("Update experience error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error updating experience" 
+        return res.status(500).json({
+            success: false,
+            message: "Error updating experience"
         })
     }
 })
 
 // DELETE EXPERIENCE - Only owner or admin can delete
-postRouter.delete("/experiences/:id", checkAuth, async(req, res) => {
+postRouter.delete("/experiences/:id", checkAuth, async (req, res) => {
     try {
         const experience = await Post.findOne({
             _id: req.params.id,
@@ -1141,17 +1141,17 @@ postRouter.delete("/experiences/:id", checkAuth, async(req, res) => {
         })
 
         if (!experience) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Experience not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Experience not found"
             })
         }
 
         // Check ownership
         if (experience.user.toString() !== req.user.userId && req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only delete your own experiences" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete your own experiences"
             })
         }
 
@@ -1173,15 +1173,15 @@ postRouter.delete("/experiences/:id", checkAuth, async(req, res) => {
 
         await Post.findByIdAndDelete(req.params.id)
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Experience deleted successfully" 
+        return res.status(200).json({
+            success: true,
+            message: "Experience deleted successfully"
         })
     } catch (error) {
         console.error("Delete experience error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error deleting experience" 
+        return res.status(500).json({
+            success: false,
+            message: "Error deleting experience"
         })
     }
 })
@@ -1193,18 +1193,18 @@ postRouter.delete("/experiences/:id", checkAuth, async(req, res) => {
 postRouter.post("/services", checkAuth, upload.fields([
     { name: "photos", maxCount: 10 },
     { name: "videos", maxCount: 5 }
-]), handleMulterError, async(req, res) => {
+]), handleMulterError, async (req, res) => {
     try {
         // Only hosts can create services
-        if (req.user.role !== 'host') {
-            return res.status(403).json({
-                success: false,
-                message: "Only hosts can create services"
-            });
-        }
+        // if (req.user.role !== 'host') {
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: "Only hosts can create services"
+        //     });
+        // }
 
-        const { 
-            title, description, location, 
+        const {
+            title, description, location,
             price, amenities, capacity, availability,
             priceTotal, pricePerPerson, maxPeople,
             categories, isFeatured, duration,
@@ -1252,29 +1252,29 @@ postRouter.post("/services", checkAuth, upload.fields([
         if (req.files && req.files["photos"]) {
             for (const file of req.files["photos"]) {
                 const result = await uploadToCloudinary(file, "image");
-                photoUrls.push({ 
-                    url: result.secure_url, 
-                    public_id: result.public_id, 
-                    resource_type: result.resource_type || 'image' 
+                photoUrls.push({
+                    url: result.secure_url,
+                    public_id: result.public_id,
+                    resource_type: result.resource_type || 'image'
                 });
             }
         }
         if (req.files && req.files["videos"]) {
             for (const file of req.files["videos"]) {
                 const result = await uploadToCloudinary(file, "video");
-                videoUrls.push({ 
-                    url: result.secure_url, 
-                    public_id: result.public_id, 
-                    resource_type: result.resource_type || 'video' 
+                videoUrls.push({
+                    url: result.secure_url,
+                    public_id: result.public_id,
+                    resource_type: result.resource_type || 'video'
                 });
             }
         }
 
         // Validation
         if (!title || !description) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Title and description are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Title and description are required"
             })
         }
 
@@ -1323,37 +1323,37 @@ postRouter.post("/services", checkAuth, upload.fields([
             isFeatured: isFeatured === 'true' || isFeatured === true || false
         })
 
-        return res.status(201).json({ 
-            success: true, 
+        return res.status(201).json({
+            success: true,
             message: "Service created successfully",
-            service 
+            service
         })
     } catch (error) {
         console.error("Create service error:", error)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error creating service",
-            error: error.message 
+            error: error.message
         })
     }
 })
 
 // GET ALL SERVICES - Automatically filtered to postType: "service"
-postRouter.get("/services", async(req, res) => {
+postRouter.get("/services", async (req, res) => {
     try {
-        const { 
+        const {
             city, country, state,
             minPrice, maxPrice, status,
             categories, isFeatured,
-            page = 1, limit = 20 
+            page = 1, limit = 20
         } = req.query
 
         // Build filter query with automatic service filter
-        const filter = { 
+        const filter = {
             postType: 'service',  // Automatically filter for services only
             status: status || 'active'
         }
-        
+
         if (city) filter['location.city'] = new RegExp(city, 'i')
         if (state) filter['location.state'] = new RegExp(state, 'i')
         if (country) filter['location.country'] = new RegExp(country, 'i')
@@ -1368,7 +1368,7 @@ postRouter.get("/services", async(req, res) => {
         }
 
         const skip = (Number(page) - 1) * Number(limit)
-        
+
         const services = await Post.find(filter)
             .populate('user', 'firstname lastname email role')
             .sort({ isFeatured: -1, createdAt: -1 })
@@ -1377,25 +1377,25 @@ postRouter.get("/services", async(req, res) => {
 
         const total = await Post.countDocuments(filter)
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: services.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            services 
+            services
         })
     } catch (error) {
         console.error("Get services error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching services" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching services"
         })
     }
 })
 
 // GET SINGLE SERVICE BY ID
-postRouter.get("/services/:id", async(req, res) => {
+postRouter.get("/services/:id", async (req, res) => {
     try {
         const service = await Post.findOne({
             _id: req.params.id,
@@ -1403,55 +1403,55 @@ postRouter.get("/services/:id", async(req, res) => {
         }).populate('user', 'firstname lastname email role')
 
         if (!service) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Service not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Service not found"
             })
         }
 
-        return res.status(200).json({ 
-            success: true, 
-            service 
+        return res.status(200).json({
+            success: true,
+            service
         })
     } catch (error) {
         console.error("Get service error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching service" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching service"
         })
     }
 })
 
 // GET FEATURED SERVICES
-postRouter.get("/services/featured/list", async(req, res) => {
+postRouter.get("/services/featured/list", async (req, res) => {
     try {
         const { limit = 10 } = req.query
 
-        const services = await Post.find({ 
+        const services = await Post.find({
             postType: 'service',
             isFeatured: true,
             status: 'active'
         })
-        .populate('user', 'firstname lastname email role')
-        .sort({ createdAt: -1 })
-        .limit(Number(limit))
+            .populate('user', 'firstname lastname email role')
+            .sort({ createdAt: -1 })
+            .limit(Number(limit))
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: services.length,
-            services 
+            services
         })
     } catch (error) {
         console.error("Get featured services error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching featured services" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching featured services"
         })
     }
 })
 
 // GET MY SERVICES - Services posted by logged-in host
-postRouter.get("/services/my/list", checkAuth, async(req, res) => {
+postRouter.get("/services/my/list", checkAuth, async (req, res) => {
     try {
         if (req.user.role !== 'host') {
             return res.status(403).json({
@@ -1460,52 +1460,52 @@ postRouter.get("/services/my/list", checkAuth, async(req, res) => {
             });
         }
 
-        const services = await Post.find({ 
+        const services = await Post.find({
             user: req.user.userId,
             postType: 'service'
         }).sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: services.length,
-            services 
+            services
         })
     } catch (error) {
         console.error("Get my services error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching your services" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching your services"
         })
     }
 })
 
 // GET SERVICES BY HOST/USER ID
-postRouter.get("/services/host/:userId", async(req, res) => {
+postRouter.get("/services/host/:userId", async (req, res) => {
     try {
         const services = await Post.find({
             user: req.params.userId,
             postType: 'service',
             status: 'active'
         })
-        .populate('user', 'firstname lastname email role')
-        .sort({ createdAt: -1 })
+            .populate('user', 'firstname lastname email role')
+            .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: services.length,
-            services 
+            services
         })
     } catch (error) {
         console.error("Get host services error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching host services" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching host services"
         })
     }
 })
 
 // UPDATE SERVICE - Only owner can update
-postRouter.put("/services/:id", checkAuth, async(req, res) => {
+postRouter.put("/services/:id", checkAuth, async (req, res) => {
     try {
         const service = await Post.findOne({
             _id: req.params.id,
@@ -1513,17 +1513,17 @@ postRouter.put("/services/:id", checkAuth, async(req, res) => {
         })
 
         if (!service) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Service not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Service not found"
             })
         }
 
         // Check ownership
         if (service.user.toString() !== req.user.userId && req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only update your own services" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only update your own services"
             })
         }
 
@@ -1545,22 +1545,22 @@ postRouter.put("/services/:id", checkAuth, async(req, res) => {
             { new: true, runValidators: true }
         ).populate('user', 'firstname lastname email role')
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             message: "Service updated successfully",
-            service: updatedService 
+            service: updatedService
         })
     } catch (error) {
         console.error("Update service error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error updating service" 
+        return res.status(500).json({
+            success: false,
+            message: "Error updating service"
         })
     }
 })
 
 // DELETE SERVICE - Only owner or admin can delete
-postRouter.delete("/services/:id", checkAuth, async(req, res) => {
+postRouter.delete("/services/:id", checkAuth, async (req, res) => {
     try {
         const service = await Post.findOne({
             _id: req.params.id,
@@ -1568,17 +1568,17 @@ postRouter.delete("/services/:id", checkAuth, async(req, res) => {
         })
 
         if (!service) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Service not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Service not found"
             })
         }
 
         // Check ownership
         if (service.user.toString() !== req.user.userId && req.user.role !== 'admin') {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only delete your own services" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete your own services"
             })
         }
 
@@ -1600,15 +1600,15 @@ postRouter.delete("/services/:id", checkAuth, async(req, res) => {
 
         await Post.findByIdAndDelete(req.params.id)
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Service deleted successfully" 
+        return res.status(200).json({
+            success: true,
+            message: "Service deleted successfully"
         })
     } catch (error) {
         console.error("Delete service error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error deleting service" 
+        return res.status(500).json({
+            success: false,
+            message: "Error deleting service"
         })
     }
 })
@@ -1620,7 +1620,7 @@ postRouter.delete("/services/:id", checkAuth, async(req, res) => {
 postRouter.post("/treks", checkAuth, upload.fields([
     { name: "photos", maxCount: 10 },
     { name: "videos", maxCount: 5 }
-]), handleMulterError, async(req, res) => {
+]), handleMulterError, async (req, res) => {
     try {
         // Only hosts can create treks
         if (req.user.role !== 'host' && req.user.role !== 'admin') {
@@ -1630,8 +1630,8 @@ postRouter.post("/treks", checkAuth, upload.fields([
             })
         }
 
-        const { 
-            title, description, location, 
+        const {
+            title, description, location,
             pricePerPerson, maxPeople,
             duration, difficulty, categories, isFeatured,
             amenities, availability
@@ -1653,23 +1653,23 @@ postRouter.post("/treks", checkAuth, upload.fields([
 
         // Validation
         if (!title || !description) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Title and description are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Title and description are required"
             })
         }
 
         if (!pricePerPerson) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Price per person is required for treks" 
+            return res.status(400).json({
+                success: false,
+                message: "Price per person is required for treks"
             })
         }
 
         if (!duration) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Duration (days and nights) is required for treks" 
+            return res.status(400).json({
+                success: false,
+                message: "Duration (days and nights) is required for treks"
             })
         }
 
@@ -1729,58 +1729,58 @@ postRouter.post("/treks", checkAuth, upload.fields([
             isFeatured: isFeatured === 'true' || isFeatured === true || false
         })
 
-        return res.status(201).json({ 
-            success: true, 
+        return res.status(201).json({
+            success: true,
             message: "Trek created successfully",
-            trek 
+            trek
         })
     } catch (error) {
         console.error("Create trek error:", error)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error creating trek",
-            error: error.message 
+            error: error.message
         })
     }
 })
 
 // GET ALL TREKS - Public with filtering (same as /api/posts/treks but cleaner endpoint)
-postRouter.get("/treks", async(req, res) => {
+postRouter.get("/treks", async (req, res) => {
     try {
-        const { 
+        const {
             city, country, state,
-            minPrice, maxPrice, 
+            minPrice, maxPrice,
             difficulty, categories,
             minDays, maxDays,
             isFeatured,
             sortBy = 'createdAt',
             order = 'desc',
-            page = 1, 
-            limit = 20 
+            page = 1,
+            limit = 20
         } = req.query
 
         // Build filter query
         const filter = { postType: 'trek', status: 'active' }
-        
+
         // Location filters
         if (city) filter['location.city'] = new RegExp(city, 'i')
         if (state) filter['location.state'] = new RegExp(state, 'i')
         if (country) filter['location.country'] = new RegExp(country, 'i')
-        
+
         // Price range filter
         if (minPrice || maxPrice) {
             filter['price.perPerson'] = {}
             if (minPrice) filter['price.perPerson'].$gte = Number(minPrice)
             if (maxPrice) filter['price.perPerson'].$lte = Number(maxPrice)
         }
-        
+
         // Duration filter (days)
         if (minDays || maxDays) {
             filter['duration.days'] = {}
             if (minDays) filter['duration.days'].$gte = Number(minDays)
             if (maxDays) filter['duration.days'].$lte = Number(maxDays)
         }
-        
+
         // Trek-specific filters
         if (difficulty) filter.difficulty = difficulty
         if (categories) filter.categories = { $in: categories.split(',') }
@@ -1789,7 +1789,7 @@ postRouter.get("/treks", async(req, res) => {
         // Build sort object
         const sortOrder = order === 'asc' ? 1 : -1
         const sortOptions = {}
-        
+
         // Valid sort fields
         const validSortFields = ['createdAt', 'price.perPerson', 'duration.days', 'difficulty', 'title']
         if (validSortFields.includes(sortBy)) {
@@ -1797,7 +1797,7 @@ postRouter.get("/treks", async(req, res) => {
         } else {
             sortOptions.createdAt = -1
         }
-        
+
         // Add secondary sort by isFeatured and createdAt
         if (sortBy !== 'createdAt') {
             sortOptions.isFeatured = -1
@@ -1805,7 +1805,7 @@ postRouter.get("/treks", async(req, res) => {
         }
 
         const skip = (Number(page) - 1) * Number(limit)
-        
+
         const treks = await Post.find(filter)
             .populate('user', 'firstname lastname email role')
             .sort(sortOptions)
@@ -1814,13 +1814,13 @@ postRouter.get("/treks", async(req, res) => {
 
         const total = await Post.countDocuments(filter)
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: treks.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            treks 
+            treks
         })
     } catch (error) {
         console.error("Get treks error:", error)
@@ -1829,7 +1829,7 @@ postRouter.get("/treks", async(req, res) => {
 })
 
 // GET SINGLE TREK BY ID - Public
-postRouter.get("/treks/:id", async(req, res) => {
+postRouter.get("/treks/:id", async (req, res) => {
     try {
         const trek = await Post.findOne({ _id: req.params.id, postType: 'trek' })
             .populate('user', 'firstname lastname email role')
@@ -1846,7 +1846,7 @@ postRouter.get("/treks/:id", async(req, res) => {
 })
 
 // UPDATE TREK - Only trek owner
-postRouter.put("/treks/:id", checkAuth, async(req, res) => {
+postRouter.put("/treks/:id", checkAuth, async (req, res) => {
     try {
         const trek = await Post.findOne({ _id: req.params.id, postType: 'trek' })
 
@@ -1856,14 +1856,14 @@ postRouter.put("/treks/:id", checkAuth, async(req, res) => {
 
         // Check if user is the owner
         if (trek.user.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only edit your own treks" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only edit your own treks"
             })
         }
 
-        const { 
-            title, description, location, 
+        const {
+            title, description, location,
             pricePerPerson, maxPeople,
             duration, difficulty, categories, isFeatured,
             amenities, availability, status
@@ -1876,7 +1876,7 @@ postRouter.put("/treks/:id", checkAuth, async(req, res) => {
                 if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
                     return JSON.parse(value)
                 }
-            } catch (e) {}
+            } catch (e) { }
             return value
         }
 
@@ -1884,12 +1884,12 @@ postRouter.put("/treks/:id", checkAuth, async(req, res) => {
         if (title) trek.title = title
         if (description) trek.description = description
         if (location) trek.location = { ...trek.location, ...parseIfJson(location) }
-        
+
         // Update price
         if (pricePerPerson) {
             trek.price = { ...trek.price, perPerson: Number(pricePerPerson) }
         }
-        
+
         // Update capacity
         if (maxPeople) {
             trek.capacity = { ...trek.capacity, maxPeople: Number(maxPeople) }
@@ -1898,7 +1898,7 @@ postRouter.put("/treks/:id", checkAuth, async(req, res) => {
         if (amenities) trek.amenities = parseIfJson(amenities)
         if (availability) trek.availability = { ...trek.availability, ...parseIfJson(availability) }
         if (status) trek.status = status
-        
+
         // Update trek-specific fields
         if (duration) trek.duration = parseIfJson(duration)
         if (difficulty) trek.difficulty = difficulty
@@ -1907,10 +1907,10 @@ postRouter.put("/treks/:id", checkAuth, async(req, res) => {
 
         await trek.save()
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: "Trek updated successfully",
-            trek 
+            trek
         })
     } catch (error) {
         console.error("Update trek error:", error)
@@ -1919,7 +1919,7 @@ postRouter.put("/treks/:id", checkAuth, async(req, res) => {
 })
 
 // DELETE TREK - Only trek owner
-postRouter.delete("/treks/:id", checkAuth, async(req, res) => {
+postRouter.delete("/treks/:id", checkAuth, async (req, res) => {
     try {
         const trek = await Post.findOne({ _id: req.params.id, postType: 'trek' })
 
@@ -1929,9 +1929,9 @@ postRouter.delete("/treks/:id", checkAuth, async(req, res) => {
 
         // Check if user is the owner
         if (trek.user.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only delete your own treks" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete your own treks"
             })
         }
 
@@ -1961,22 +1961,22 @@ postRouter.delete("/treks/:id", checkAuth, async(req, res) => {
 
         await Post.findByIdAndDelete(req.params.id)
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Trek deleted successfully" 
+        return res.status(200).json({
+            success: true,
+            message: "Trek deleted successfully"
         })
     } catch (error) {
         console.error("Delete trek error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error deleting trek" 
+        return res.status(500).json({
+            success: false,
+            message: "Error deleting trek"
         })
     }
 })
 
 // GET SINGLE POST BY ID - Public
 // IMPORTANT: This route must be at the END to avoid catching specific routes
-postRouter.get("/:id", async(req, res) => {
+postRouter.get("/:id", async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
             .populate('user', 'firstname lastname email role')
