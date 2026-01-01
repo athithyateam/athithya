@@ -23,6 +23,9 @@ const corsOptions = {
       "http://16.170.143.201:3000",
       "http://localhost:5000",
       "https://athithya-pi.vercel.app",
+      "https://athithya.in",
+      "https://www.athithya.in",
+      "https://api.athithya.in",
       process.env.FRONTEND_URL, // Add your production frontend URL to .env
     ].filter(Boolean); // Remove undefined values
 
