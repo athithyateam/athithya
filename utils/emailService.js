@@ -11,15 +11,15 @@ const generateOTP = () => {
 };
 
 // Send OTP Email
-const sendOTPEmail = async (email, otp) => {
+const sendOTPEmail = async (email, otp, subject = "Email Verification - OTP", title = "Email Verification") => {
     try {
         let sendSmtpEmail = new brevo.SendSmtpEmail();
         
-        sendSmtpEmail.subject = "Email Verification - OTP";
+        sendSmtpEmail.subject = subject;
         sendSmtpEmail.htmlContent = `
             <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Email Verification</h2>
-                <p>Your OTP for email verification is:</p>
+                <h2 style="color: #333;">${title}</h2>
+                <p>Your OTP is:</p>
                 <h1 style="color: #4CAF50; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
                 <p>This OTP will expire in 5 minutes.</p>
                 <p style="color: #666; font-size: 12px;">If you didn't request this, please ignore this email.</p>

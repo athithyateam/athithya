@@ -9,7 +9,7 @@ const validateReq = require("../middleware/validateReq")
 const userrouter = express.Router()
 
 // INITIATE SIGNUP - Send OTP when user submits signup form
-userrouter.post("/signup/initiate", validateUser(signupSchema), async(req, res) => {
+userrouter.post("/signup/initiate", validateUser(signupSchema), async (req, res) => {
     const { firstname, lastname, email, password, role } = req.body
 
     try {
@@ -21,9 +21,9 @@ userrouter.post("/signup/initiate", validateUser(signupSchema), async(req, res) 
 
         // Validate role (only guest or host allowed)
         if (role && !['guest', 'host'].includes(role)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid role. Only 'guest' or 'host' allowed." 
+            return res.status(400).json({
+                success: false,
+                message: "Invalid role. Only 'guest' or 'host' allowed."
             })
         }
 
@@ -39,18 +39,18 @@ userrouter.post("/signup/initiate", validateUser(signupSchema), async(req, res) 
 
         // Send OTP via email
         const emailResult = await sendOTPEmail(email, otp)
-        
+
         if (!emailResult.success) {
             console.error("Email sending failed:", emailResult.error)
-            return res.status(500).json({ 
-                success: false, 
+            return res.status(500).json({
+                success: false,
                 message: "Failed to send OTP email",
                 error: emailResult.error?.message || "Unknown error"
             })
         }
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: "OTP sent to your email. Please verify to complete signup.",
             email: email
         })
@@ -61,7 +61,7 @@ userrouter.post("/signup/initiate", validateUser(signupSchema), async(req, res) 
 })
 
 // COMPLETE SIGNUP - Verify OTP and create account
-userrouter.post("/signup/complete", validateUser(otpCompleteSchema), async(req, res) => {
+userrouter.post("/signup/complete", validateUser(otpCompleteSchema), async (req, res) => {
     const { firstname, lastname, email, password, role, otp } = req.body
 
     if (!otp) {
@@ -78,9 +78,9 @@ userrouter.post("/signup/complete", validateUser(otpCompleteSchema), async(req, 
         // Validate role (only guest or host allowed, admin must be set from backend)
         const userRole = role || 'guest' // Default to guest if not specified
         if (!['guest', 'host'].includes(userRole)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid role. Only 'guest' or 'host' allowed." 
+            return res.status(400).json({
+                success: false,
+                message: "Invalid role. Only 'guest' or 'host' allowed."
             })
         }
 
@@ -105,9 +105,9 @@ userrouter.post("/signup/complete", validateUser(otpCompleteSchema), async(req, 
         })
 
         const token = jwt.sign({ userId: user._id, role: user.role }, jwtkey, { expiresIn: "30d" })
-        return res.status(201).json({ 
-            success: true, 
-            message: "Account created and verified successfully", 
+        return res.status(201).json({
+            success: true,
+            message: "Account created and verified successfully",
             token,
             isVerified: true,
             user: {
@@ -125,7 +125,7 @@ userrouter.post("/signup/complete", validateUser(otpCompleteSchema), async(req, 
 })
 
 // SEND OTP
-userrouter.post("/send-otp", async(req, res) => {
+userrouter.post("/send-otp", async (req, res) => {
     const { email } = req.body
 
     if (!email) {
@@ -151,11 +151,11 @@ userrouter.post("/send-otp", async(req, res) => {
 
         // Send OTP via email
         const emailResult = await sendOTPEmail(email, otp)
-        
+
         if (!emailResult.success) {
             console.error("Email sending failed:", emailResult.error)
-            return res.status(500).json({ 
-                success: false, 
+            return res.status(500).json({
+                success: false,
                 message: "Failed to send OTP email",
                 error: emailResult.error?.message || "Unknown error"
             })
@@ -169,7 +169,7 @@ userrouter.post("/send-otp", async(req, res) => {
 })
 
 // VERIFY OTP
-userrouter.post("/verify-otp", async(req, res) => {
+userrouter.post("/verify-otp", async (req, res) => {
     const { email, otp } = req.body
 
     if (!email || !otp) {
@@ -195,7 +195,7 @@ userrouter.post("/verify-otp", async(req, res) => {
 })
 
 // SIGNUP
-userrouter.post("/signup", validateUser(signupSchema), async(req, res) => {
+userrouter.post("/signup", validateUser(signupSchema), async (req, res) => {
     const { firstname, lastname, email, password, role, otp } = req.body
 
     try {
@@ -207,9 +207,9 @@ userrouter.post("/signup", validateUser(signupSchema), async(req, res) => {
         // Validate role (only guest or host allowed)
         const userRole = role || 'guest'
         if (!['guest', 'host'].includes(userRole)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid role. Only 'guest' or 'host' allowed." 
+            return res.status(400).json({
+                success: false,
+                message: "Invalid role. Only 'guest' or 'host' allowed."
             })
         }
 
@@ -234,9 +234,9 @@ userrouter.post("/signup", validateUser(signupSchema), async(req, res) => {
         })
 
         const token = jwt.sign({ userId: user._id, role: user.role }, jwtkey, { expiresIn: "30d" })
-        return res.status(201).json({ 
-            success: true, 
-            message: otp ? "User created and verified successfully" : "User created successfully", 
+        return res.status(201).json({
+            success: true,
+            message: otp ? "User created and verified successfully" : "User created successfully",
             token,
             isVerified: user.isVerified,
             user: {
@@ -254,9 +254,9 @@ userrouter.post("/signup", validateUser(signupSchema), async(req, res) => {
 })
 
 // SIGNIN
-userrouter.post("/signin", validateUser(signinSchema), async(req, res) => {
+userrouter.post("/signin", validateUser(signinSchema), async (req, res) => {
     const { email, password } = req.body
-    
+
     try {
         const user = await User.findOne({ email })
         if (!user) {
@@ -269,9 +269,9 @@ userrouter.post("/signin", validateUser(signinSchema), async(req, res) => {
         }
 
         const token = jwt.sign({ userId: user._id, role: user.role }, jwtkey, { expiresIn: "30d" })
-        return res.status(200).json({ 
-            success: true, 
-            message: "Login successful", 
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
             token,
             user: {
                 id: user._id,
@@ -288,18 +288,88 @@ userrouter.post("/signin", validateUser(signinSchema), async(req, res) => {
     }
 })
 
+// FORGOT PASSWORD
+userrouter.post("/forgot-password", async (req, res) => {
+    const { email } = req.body
+
+    if (!email) {
+        return res.status(400).json({ success: false, message: "Email is required" })
+    }
+
+    try {
+        const user = await User.findOne({ email })
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" })
+        }
+
+        const otp = generateOTP()
+
+        await OTP.findOneAndUpdate(
+            { email },
+            { email, otp },
+            { upsert: true, new: true }
+        )
+
+        const emailResult = await sendOTPEmail(
+            email,
+            otp,
+            "Password Reset - OTP",
+            "Password Reset Request"
+        )
+
+        if (!emailResult.success) {
+            return res.status(500).json({ success: false, message: "Failed to send OTP email" })
+        }
+
+        return res.status(200).json({ success: true, message: "OTP sent to your email" })
+    } catch (error) {
+        console.error("Forgot password error:", error)
+        return res.status(500).json({ success: false, message: "Error sending OTP" })
+    }
+})
+
+// RESET PASSWORD
+userrouter.post("/reset-password", async (req, res) => {
+    const { email, otp, newPassword } = req.body
+
+    if (!email || !otp || !newPassword) {
+        return res.status(400).json({ success: false, message: "All fields are required" })
+    }
+
+    try {
+        const otpRecord = await OTP.findOne({ email, otp })
+        if (!otpRecord) {
+            return res.status(400).json({ success: false, message: "Invalid or expired OTP" })
+        }
+
+        const hashedPass = await bcrypt.hash(newPassword, 10)
+
+        await User.findOneAndUpdate(
+            { email },
+            { password: hashedPass }
+        )
+
+        await OTP.deleteOne({ email, otp })
+
+        return res.status(200).json({ success: true, message: "Password reset successfully" })
+    } catch (error) {
+        console.error("Reset password error:", error)
+        return res.status(500).json({ success: false, message: "Error resetting password" })
+    }
+})
+
 // ============= ADMIN ENDPOINTS =============
 
 // GET ALL USERS (Admin only)
-userrouter.get("/admin/users", checkAuth, checkAdmin, async(req, res) => {
+userrouter.get("/admin/users", checkAuth, checkAdmin, async (req, res) => {
     try {
         const users = await User.find({}, '-password') // Exclude password field
             .sort({ createdAt: -1 }); // Newest first
-        
-        return res.status(200).json({ 
-            success: true, 
+
+        return res.status(200).json({
+            success: true,
             count: users.length,
-            users 
+            users
         })
     } catch (error) {
         console.error("Get users error:", error)
@@ -308,14 +378,14 @@ userrouter.get("/admin/users", checkAuth, checkAdmin, async(req, res) => {
 })
 
 // GET USER BY ID (Admin only)
-userrouter.get("/admin/users/:id", checkAuth, checkAdmin, async(req, res) => {
+userrouter.get("/admin/users/:id", checkAuth, checkAdmin, async (req, res) => {
     try {
         const user = await User.findById(req.params.id, '-password')
-        
+
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" })
         }
-        
+
         return res.status(200).json({ success: true, user })
     } catch (error) {
         console.error("Get user error:", error)
@@ -324,31 +394,31 @@ userrouter.get("/admin/users/:id", checkAuth, checkAdmin, async(req, res) => {
 })
 
 // UPDATE USER ROLE (Admin only)
-userrouter.patch("/admin/users/:id/role", checkAuth, checkAdmin, async(req, res) => {
+userrouter.patch("/admin/users/:id/role", checkAuth, checkAdmin, async (req, res) => {
     const { role } = req.body
-    
+
     if (!role || !['guest', 'host', 'admin'].includes(role)) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Invalid role. Must be 'guest', 'host', or 'admin'" 
+        return res.status(400).json({
+            success: false,
+            message: "Invalid role. Must be 'guest', 'host', or 'admin'"
         })
     }
-    
+
     try {
         const user = await User.findByIdAndUpdate(
             req.params.id,
             { role },
             { new: true }
         ).select('-password')
-        
+
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" })
         }
-        
-        return res.status(200).json({ 
-            success: true, 
+
+        return res.status(200).json({
+            success: true,
             message: "User role updated successfully",
-            user 
+            user
         })
     } catch (error) {
         console.error("Update role error:", error)
@@ -357,17 +427,17 @@ userrouter.patch("/admin/users/:id/role", checkAuth, checkAdmin, async(req, res)
 })
 
 // DELETE USER (Admin only)
-userrouter.delete("/admin/users/:id", checkAuth, checkAdmin, async(req, res) => {
+userrouter.delete("/admin/users/:id", checkAuth, checkAdmin, async (req, res) => {
     try {
         const user = await User.findByIdAndDelete(req.params.id)
-        
+
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" })
         }
-        
-        return res.status(200).json({ 
-            success: true, 
-            message: "User deleted successfully" 
+
+        return res.status(200).json({
+            success: true,
+            message: "User deleted successfully"
         })
     } catch (error) {
         console.error("Delete user error:", error)
@@ -376,15 +446,15 @@ userrouter.delete("/admin/users/:id", checkAuth, checkAdmin, async(req, res) => 
 })
 
 // GET STATISTICS (Admin only)
-userrouter.get("/admin/stats", checkAuth, checkAdmin, async(req, res) => {
+userrouter.get("/admin/stats", checkAuth, checkAdmin, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments()
         const guestCount = await User.countDocuments({ role: 'guest' })
         const hostCount = await User.countDocuments({ role: 'host' })
         const adminCount = await User.countDocuments({ role: 'admin' })
         const verifiedCount = await User.countDocuments({ isVerified: true })
-        
-        return res.status(200).json({ 
+
+        return res.status(200).json({
             success: true,
             statistics: {
                 totalUsers,
@@ -404,13 +474,13 @@ userrouter.get("/admin/stats", checkAuth, checkAdmin, async(req, res) => {
 })
 
 // UPDATE USER LOCATION - For both hosts and guests
-userrouter.put("/location", validateReq, async(req, res) => {
+userrouter.put("/location", validateReq, async (req, res) => {
     const { latitude, longitude, address, city, state, country } = req.body
-    
+
     console.log('=== UPDATE LOCATION REQUEST ===')
     console.log('User ID:', req.userId)
     console.log('Location data:', { latitude, longitude, address, city, state, country })
-    
+
     try {
         // Validate that at least coordinates are provided
         if (!latitude || !longitude) {
@@ -483,13 +553,13 @@ userrouter.put("/location", validateReq, async(req, res) => {
 })
 
 // GET USER LOCATION - For both hosts and guests
-userrouter.get("/location", validateReq, async(req, res) => {
+userrouter.get("/location", validateReq, async (req, res) => {
     console.log('=== GET LOCATION REQUEST ===')
     console.log('User ID:', req.userId)
-    
+
     try {
         const user = await User.findById(req.userId).select('location role firstname lastname')
-        
+
         if (!user) {
             console.log('User not found:', req.userId)
             return res.status(404).json({
@@ -522,14 +592,14 @@ userrouter.get("/location", validateReq, async(req, res) => {
 })
 
 // GET USER PROFILE WITH ALL POSTS - Public endpoint
-userrouter.get("/profile/:userId", async(req, res) => {
+userrouter.get("/profile/:userId", async (req, res) => {
     try {
         const { userId } = req.params
         const { Post } = require("../db/mongoose")
 
         // Get user details (exclude sensitive fields)
         const user = await User.findById(userId).select('-password -otp -otpExpires')
-        
+
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -538,7 +608,7 @@ userrouter.get("/profile/:userId", async(req, res) => {
         }
 
         // Get all posts by this user
-        const posts = await Post.find({ 
+        const posts = await Post.find({
             user: userId,
             status: 'active'
         }).sort({ createdAt: -1 })
@@ -561,7 +631,7 @@ userrouter.get("/profile/:userId", async(req, res) => {
                 .populate('reviewer', 'firstname lastname')
                 .sort({ createdAt: -1 })
                 .limit(10) // Latest 10 reviews
-            
+
             if (reviews.length > 0) {
                 const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
                 reviewStats = {
@@ -611,7 +681,7 @@ userrouter.get("/profile/:userId", async(req, res) => {
 
 // GET TOP-RATED HOSTS - Public
 // Returns hosts sorted by average rating from reviews
-userrouter.get("/top-rated/hosts", async(req, res) => {
+userrouter.get("/top-rated/hosts", async (req, res) => {
     try {
         const { limit = 10, minRating = 0, location } = req.query
         const { Review, Post } = require("../db/mongoose")
@@ -637,7 +707,7 @@ userrouter.get("/top-rated/hosts", async(req, res) => {
         const topRatedHosts = await Review.aggregate([
             {
                 // Only include reviews that have a host reference
-                $match: { 
+                $match: {
                     host: { $exists: true, $ne: null }
                 }
             },
@@ -757,44 +827,44 @@ userrouter.get("/top-rated/hosts", async(req, res) => {
                 const city = (host.location.city || '').toLowerCase()
                 const state = (host.location.state || '').toLowerCase()
                 const country = (host.location.country || '').toLowerCase()
-                return city.includes(locationLower) || 
-                       state.includes(locationLower) || 
-                       country.includes(locationLower)
+                return city.includes(locationLower) ||
+                    state.includes(locationLower) ||
+                    country.includes(locationLower)
             })
         }
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: filteredHosts.length,
             hosts: filteredHosts
         })
     } catch (error) {
         console.error("Get top-rated hosts error:", error)
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error fetching top-rated hosts" 
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching top-rated hosts"
         })
     }
 })
 
 // GET SINGLE USER BY ID (Authenticated users)
 // NOTE: This route must be at the end to avoid conflicts with other routes
-userrouter.get("/:id", checkAuth, async(req, res) => {
+userrouter.get("/:id", checkAuth, async (req, res) => {
     try {
         const { id } = req.params
-        
+
         // Find user and exclude password field
         const user = await User.findById(id).select('-password')
-        
+
         if (!user) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "User not found" 
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
             })
         }
-        
-        return res.status(200).json({ 
-            success: true, 
+
+        return res.status(200).json({
+            success: true,
             user: {
                 id: user._id,
                 firstname: user.firstname,
@@ -809,10 +879,10 @@ userrouter.get("/:id", checkAuth, async(req, res) => {
         })
     } catch (error) {
         console.error("Get user error:", error)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error fetching user",
-            error: error.message 
+            error: error.message
         })
     }
 })
