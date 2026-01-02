@@ -1,5 +1,6 @@
 const express = require("express")
 const bcrypt = require("bcrypt")
+const { OAuth2Client } = require("google-auth-library")
 const { validateUser, signupSchema, signinSchema, otpCompleteSchema } = require("../middleware/validateUser")
 const { jwt, jwtkey } = require("../jwt/jwt")
 const { User, OTP } = require("../db/mongoose")
@@ -355,6 +356,71 @@ userrouter.post("/reset-password", async (req, res) => {
     } catch (error) {
         console.error("Reset password error:", error)
         return res.status(500).json({ success: false, message: "Error resetting password" })
+    }
+})
+
+const axios = require("axios");
+
+// GOOGLE SIGNIN
+userrouter.post("/google", async (req, res) => {
+    const { token, role } = req.body; // access_token from frontend
+
+    try {
+        // Verify token and get user info from Google
+        const googleRes = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const { email, given_name, family_name, picture, sub } = googleRes.data;
+
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Create new user if not exists
+            // Note: Google doesn't give password, so we generate a random hash or handle it differently
+            // For now, we'll set a random password as they should login via Google
+            const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+            const hashedPass = await bcrypt.hash(randomPassword, 10);
+
+            const userRole = role && ['guest', 'host'].includes(role) ? role : 'guest';
+
+            user = await User.create({
+                firstname: given_name,
+                lastname: family_name || '',
+                email,
+                password: hashedPass,
+                role: userRole,
+                isVerified: true, // Google emails are verified
+                avatar: picture
+            });
+        }
+
+        // Check if user is verified (if they signed up manually before but didn't verify)
+        if (!user.isVerified) {
+            user.isVerified = true;
+            await user.save();
+        }
+
+        // Generate our JWT
+        const jwtToken = jwt.sign({ userId: user._id, role: user.role }, jwtkey, { expiresIn: "30d" });
+
+        return res.status(200).json({
+            success: true,
+            message: "Google login successful",
+            token: jwtToken,
+            user: {
+                id: user._id,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar
+            }
+        });
+
+    } catch (error) {
+        console.error("Google signin error:", error);
+        return res.status(500).json({ success: false, message: "Error with Google signin" });
     }
 })
 
