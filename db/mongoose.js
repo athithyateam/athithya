@@ -6,14 +6,16 @@ if (!MONGO_URL) {
     console.error("❌ ERROR: MONGO_URL is not defined in environment variables!");
 }
 
-mongoose.connect(MONGO_URL || "", {
-    serverSelectionTimeoutMS: 5000, // Reduced to 5s for Vercel
-    socketTimeoutMS: 45000,
-})
-    .then(() => { console.log("✅ Connected to MongoDB") })
-    .catch((error) => {
-        console.error("❌ MongoDB connection error:", error.message);
-    });
+if (MONGO_URL) {
+    mongoose.connect(MONGO_URL, {
+        serverSelectionTimeoutMS: 5000, // Reduced to 5s for Vercel
+        socketTimeoutMS: 45000,
+    })
+        .then(() => { console.log("✅ Connected to MongoDB") })
+        .catch((error) => {
+            console.error("❌ MongoDB connection error:", error.message);
+        });
+}
 
 const userSchema = new mongoose.Schema({
     firstname: { type: String, required: true },
