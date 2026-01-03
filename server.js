@@ -90,7 +90,7 @@ app.use("/api", (req, res) => {
 });
 
 // 7. SPA FALLBACK
-app.get("(.*)", (req, res) => {
+app.get(/.*/, (req, res) => {
   const indexPath = path.resolve(_dirname, "At-front", "dist", "index.html");
   res.sendFile(indexPath, (err) => {
     if (err) {
