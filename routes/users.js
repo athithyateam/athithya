@@ -554,7 +554,7 @@ userrouter.get("/admin/stats", checkAuth, checkAdmin, async (req, res) => {
 // UPDATE USER PROFILE
 userrouter.put("/profile", checkAuth, upload.single("avatar"), async (req, res) => {
     try {
-        const { firstname, lastname, description } = req.body
+        const { firstname, lastname, description, removeAvatar } = req.body
         const user = await User.findById(req.user.userId)
 
         if (!user) {
@@ -565,8 +565,19 @@ userrouter.put("/profile", checkAuth, upload.single("avatar"), async (req, res) 
         if (lastname) user.lastname = lastname
         if (description !== undefined) user.description = description
 
-        if (req.file) {
-            // Delete old avatar if it exists in Cloudinary
+        // Handle avatar removal
+        if (removeAvatar === "true" || removeAvatar === true) {
+            if (user.avatar && user.avatar.public_id) {
+                try {
+                    await cloudinary.uploader.destroy(user.avatar.public_id)
+                } catch (err) {
+                    console.error("Avatar deletion failed:", err)
+                }
+            }
+            user.avatar = undefined;
+        }
+        else if (req.file) {
+            // Delete old avatar if it exists
             if (user.avatar && user.avatar.public_id) {
                 try {
                     await cloudinary.uploader.destroy(user.avatar.public_id)
