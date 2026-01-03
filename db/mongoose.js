@@ -149,6 +149,7 @@ const postSchema = new mongoose.Schema({
         emoji: { type: String },
         timestamp: { type: Date, default: Date.now }
     }],
+    privacyPolicy: [{ type: String }],
     status: {
         type: String,
         enum: ['active', 'inactive', 'pending', 'archived'],

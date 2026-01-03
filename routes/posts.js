@@ -1205,7 +1205,7 @@ postRouter.put("/experiences/:id", checkAuth, async (req, res) => {
         const {
             title, description, location, price, amenities,
             capacity, availability, categories, isFeatured, status,
-            difficulty, duration
+            difficulty, duration, privacyPolicy
         } = req.body
 
         const parseIfJson = (value) => {
@@ -1225,6 +1225,7 @@ postRouter.put("/experiences/:id", checkAuth, async (req, res) => {
         if (location) experience.location = { ...experience.location, ...parseIfJson(location) }
         if (price) experience.price = { ...experience.price, ...parseIfJson(price) }
         if (amenities) experience.amenities = parseIfJson(amenities)
+        if (privacyPolicy) experience.privacyPolicy = parseIfJson(privacyPolicy)
         if (capacity) experience.capacity = { ...experience.capacity, ...parseIfJson(capacity) }
         if (availability) experience.availability = { ...experience.availability, ...parseIfJson(availability) }
         if (categories) experience.categories = parseIfJson(categories)
@@ -1326,7 +1327,7 @@ postRouter.post("/services", checkAuth, upload.fields([
             priceTotal, pricePerPerson, maxPeople,
             categories, isFeatured, duration,
             city, state, country, meetingPoint,
-            days, nights, period
+            days, nights, period, privacyPolicy
         } = req.body
 
         // Helper to parse JSON fields
@@ -1434,6 +1435,7 @@ postRouter.post("/services", checkAuth, upload.fields([
             price: priceObj,
             duration: durationObj,
             amenities: parseIfJson(amenities) || [],
+            privacyPolicy: parseIfJson(privacyPolicy) || [],
             capacity: capacityObj,
             availability: parseIfJson(availability) || {},
             categories: parseIfJson(categories) || [],
@@ -1622,7 +1624,10 @@ postRouter.get("/services/host/:userId", async (req, res) => {
 })
 
 // UPDATE SERVICE - Only owner can update
-postRouter.put("/services/:id", checkAuth, async (req, res) => {
+postRouter.put("/services/:id", checkAuth, upload.fields([
+    { name: "photos", maxCount: 10 },
+    { name: "videos", maxCount: 5 }
+]), handleMulterError, async (req, res) => {
     try {
         const service = await Post.findOne({
             _id: req.params.id,
@@ -1644,28 +1649,78 @@ postRouter.put("/services/:id", checkAuth, async (req, res) => {
             })
         }
 
-        const allowedUpdates = [
-            'title', 'description', 'location', 'price', 'amenities',
-            'capacity', 'availability', 'categories', 'isFeatured', 'status'
-        ]
+        const {
+            title, description, location, price, amenities,
+            capacity, availability, categories, isFeatured, status,
+            difficulty, duration, privacyPolicy,
+            existingPhotos: existingPhotosStr
+        } = req.body
 
-        const updates = {}
-        Object.keys(req.body).forEach(key => {
-            if (allowedUpdates.includes(key)) {
-                updates[key] = req.body[key]
+        const parseIfJson = (value) => {
+            if (!value) return undefined
+            if (typeof value === 'object') return value
+            try {
+                if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
+                    return JSON.parse(value)
+                }
+            } catch (e) { }
+            return value
+        }
+
+        // Handle existing photos
+        const existingPhotos = parseIfJson(existingPhotosStr) || []
+
+        // Cloudinary cleanup for removed photos
+        const currentPhotoIds = existingPhotos.map(p => p.public_id).filter(id => id)
+        for (const photo of (service.photos || [])) {
+            if (photo.public_id && !currentPhotoIds.includes(photo.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(photo.public_id)
+                } catch (err) { }
             }
-        })
+        }
 
-        const updatedService = await Post.findByIdAndUpdate(
-            req.params.id,
-            updates,
-            { new: true, runValidators: true }
-        ).populate('user', 'firstname lastname email role')
+        // Upload new files
+        const uploadToCloudinary = (file, resourceType) => {
+            return new Promise((resolve, reject) => {
+                cloudinary.uploader.upload_stream({ resource_type: resourceType }, (error, result) => {
+                    if (error) return reject(error);
+                    resolve(result);
+                }).end(file.buffer);
+            });
+        };
+
+        let newPhotos = []
+        if (req.files && req.files["photos"]) {
+            for (const file of req.files["photos"]) {
+                const result = await uploadToCloudinary(file, "image");
+                newPhotos.push({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type || 'image' });
+            }
+        }
+
+        // Update fields
+        if (title) service.title = title
+        if (description) service.description = description
+        if (location) service.location = { ...service.location, ...parseIfJson(location) }
+        if (price) service.price = { ...service.price, ...parseIfJson(price) }
+        if (amenities) service.amenities = parseIfJson(amenities)
+        if (privacyPolicy) service.privacyPolicy = parseIfJson(privacyPolicy)
+        if (capacity) service.capacity = { ...service.capacity, ...parseIfJson(capacity) }
+        if (availability) service.availability = { ...service.availability, ...parseIfJson(availability) }
+        if (categories) service.categories = parseIfJson(categories)
+        if (difficulty) service.difficulty = difficulty
+        if (duration) service.duration = parseIfJson(duration)
+        if (status) service.status = status
+        if (isFeatured !== undefined) service.isFeatured = isFeatured === 'true' || isFeatured === true
+
+        service.photos = [...existingPhotos, ...newPhotos]
+
+        await service.save()
 
         return res.status(200).json({
             success: true,
             message: "Service updated successfully",
-            service: updatedService
+            service
         })
     } catch (error) {
         console.error("Update service error:", error)
