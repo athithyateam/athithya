@@ -10,68 +10,35 @@ const _dirname = path.resolve();
 // Updated deployment - including user location routes
 
 // CORS Configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "http://localhost:5000",
+  "https://athithya-pi.vercel.app",
+  "https://athithya.in",
+  "https://www.athithya.in",
+  "https://api.athithya.in",
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, or same-origin)
-    if (!origin) return callback(null, true);
-
-    // List of allowed origins
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:3000",
-      "http://16.170.143.201:3000",
-      "http://localhost:5000",
-      "https://athithya-pi.vercel.app",
-      "https://athithya.in",
-      "https://www.athithya.in",
-      "https://api.athithya.in",
-      process.env.FRONTEND_URL, // Add your production frontend URL to .env
-    ].filter(Boolean); // Remove undefined values
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".athithya.in")) {
       callback(null, true);
     } else {
-      // Still allow it for development, but log it
       console.log("CORS origin not in whitelist:", origin);
-      callback(null, true); // Change to callback(new Error('Not allowed by CORS')) in production
+      callback(null, true); // Allow for now to debug
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-  ],
-  exposedHeaders: ["Content-Range", "X-Content-Range"],
-  maxAge: 86400, // 24 hours
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  optionsSuccessStatus: 200 // Some older browsers prefer 200
 };
 
 // Middleware
 app.use(cors(corsOptions));
-
-// Handle all OPTIONS requests for preflight
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-Requested-With, Accept"
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
-    return res.status(204).end();
-  }
-  next();
-});
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -116,6 +83,16 @@ app.get("*", (req, res) => {
         path: indexPath
       });
     }
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("UNHANDLED ERROR:", err);
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error - " + err.message,
+    error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });
 
