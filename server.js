@@ -100,14 +100,23 @@ app.get("/health", (req, res) => {
 // Serve frontend static files
 app.use(express.static(path.join(_dirname, "At-front", "dist")));
 
-// SPA fallback (REGEX ONLY)
-app.get(/.*/, (_, res) => {
-  res.sendFile(path.resolve(_dirname, "At-front", "dist", "index.html"));
-});
-
-// API 404 (optional but clean)
+// API 404 (catches all unmatched /api routes)
 app.use("/api", (req, res) => {
   res.status(404).json({ message: "API route not found" });
+});
+
+// SPA fallback for all other routes - MUST be last
+app.get("*", (req, res) => {
+  const indexPath = path.resolve(_dirname, "At-front", "dist", "index.html");
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error("SPA Fallback Error:", err);
+      res.status(404).json({
+        message: "Frontend not found or route invalid",
+        path: indexPath
+      });
+    }
+  });
 });
 
 // Start server
