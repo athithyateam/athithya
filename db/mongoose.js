@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema({
         required: true
     },
     isVerified: { type: Boolean, default: false },
+    avatar: {
+        url: { type: String },
+        public_id: { type: String }
+    },
+    description: { type: String, maxlength: 500 },
     otp: { type: String },
     otpExpires: { type: Date },
     location: {

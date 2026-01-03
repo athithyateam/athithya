@@ -7,6 +7,15 @@ const { User, OTP } = require("../db/mongoose")
 const { generateOTP, sendOTPEmail } = require("../utils/emailService")
 const { checkAuth, checkAdmin, checkHost } = require("../middleware/checkRole")
 const validateReq = require("../middleware/validateReq")
+const cloudinary = require("../utils/cloudinary")
+const multer = require("multer")
+const storage = multer.memoryStorage()
+const upload = multer({
+    storage,
+    limits: {
+        fileSize: 3 * 1024 * 1024 // 3MB
+    }
+})
 const userrouter = express.Router()
 
 // INITIATE SIGNUP - Send OTP when user submits signup form
@@ -280,7 +289,9 @@ userrouter.post("/signin", validateUser(signinSchema), async (req, res) => {
                 lastname: user.lastname,
                 email: user.email,
                 role: user.role,
-                isVerified: user.isVerified
+                isVerified: user.isVerified,
+                avatar: user.avatar,
+                description: user.description
             }
         })
     } catch (error) {
@@ -414,7 +425,8 @@ userrouter.post("/google", async (req, res) => {
                 lastname: user.lastname,
                 email: user.email,
                 role: user.role,
-                avatar: user.avatar
+                avatar: user.avatar,
+                description: user.description
             }
         });
 
@@ -536,6 +548,68 @@ userrouter.get("/admin/stats", checkAuth, checkAdmin, async (req, res) => {
     } catch (error) {
         console.error("Get stats error:", error)
         return res.status(500).json({ success: false, message: "Error fetching statistics" })
+    }
+})
+
+// UPDATE USER PROFILE
+userrouter.put("/profile", checkAuth, upload.single("avatar"), async (req, res) => {
+    try {
+        const { firstname, lastname, description } = req.body
+        const user = await User.findById(req.user.userId)
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" })
+        }
+
+        if (firstname) user.firstname = firstname
+        if (lastname) user.lastname = lastname
+        if (description !== undefined) user.description = description
+
+        if (req.file) {
+            // Delete old avatar if it exists in Cloudinary
+            if (user.avatar && user.avatar.public_id) {
+                try {
+                    await cloudinary.uploader.destroy(user.avatar.public_id)
+                } catch (err) {
+                    console.error("Old avatar deletion failed:", err)
+                }
+            }
+
+            // Upload new avatar
+            const result = await new Promise((resolve, reject) => {
+                cloudinary.uploader.upload_stream({
+                    resource_type: "image",
+                    folder: "avatars"
+                }, (error, result) => {
+                    if (error) reject(error)
+                    else resolve(result)
+                }).end(req.file.buffer)
+            })
+
+            user.avatar = {
+                url: result.secure_url,
+                public_id: result.public_id
+            }
+        }
+
+        await user.save()
+
+        res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            user: {
+                id: user._id,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar,
+                description: user.description
+            }
+        })
+    } catch (error) {
+        console.error("Update profile error:", error)
+        res.status(500).json({ success: false, message: "Error updating profile" })
     }
 })
 
