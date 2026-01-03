@@ -664,6 +664,60 @@ postRouter.put("/:id", checkAuth, async (req, res) => {
     }
 })
 
+// TOGGLE REACTION - Authenticated users
+postRouter.put("/:id/react", checkAuth, async (req, res) => {
+    try {
+        const { emoji } = req.body
+        const post = await Post.findById(req.params.id)
+
+        if (!post) {
+            return res.status(404).json({ success: false, message: "Post not found" })
+        }
+
+        const userId = req.user.userId
+
+        // Fetch user to get accurate name
+        const user = await User.findById(userId)
+        const userName = user ? user.firstname : "User"
+
+        // Ensure reactions array exists
+        if (!post.reactions) post.reactions = []
+
+        const existingIndex = post.reactions.findIndex(r => r.user.toString() === userId)
+
+        if (existingIndex > -1) {
+            // Check if same emoji
+            if (post.reactions[existingIndex].emoji === emoji) {
+                // Remove
+                post.reactions.splice(existingIndex, 1)
+            } else {
+                // Update
+                post.reactions[existingIndex].emoji = emoji
+                post.reactions[existingIndex].timestamp = Date.now()
+            }
+        } else {
+            // Add
+            post.reactions.push({
+                user: userId,
+                name: userName,
+                emoji
+            })
+        }
+
+        await post.save()
+
+        return res.status(200).json({
+            success: true,
+            message: "Reaction updated",
+            reactions: post.reactions
+        })
+
+    } catch (error) {
+        console.error("Reaction error:", error)
+        return res.status(500).json({ success: false, message: "Error updating reaction" })
+    }
+})
+
 // DELETE POST - Only post owner
 postRouter.delete("/:id", checkAuth, async (req, res) => {
     try {

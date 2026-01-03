@@ -5,19 +5,19 @@ mongoose.connect(`${process.env.MONGO_URL}`, {
     serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
     socketTimeoutMS: 45000,
 })
-.then(() => {console.log("connected to mongoDB")})
-.catch((error) => {console.error("connection error", error)})
+    .then(() => { console.log("connected to mongoDB") })
+    .catch((error) => { console.error("connection error", error) })
 
 const userSchema = new mongoose.Schema({
-    firstname: {type: String, required: true},
-    lastname : {type: String, required: true},
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true},
-    password: { type: String, required: true},
-    role: { 
-        type: String, 
-        enum: ['guest', 'host', 'admin'], 
+    firstname: { type: String, required: true },
+    lastname: { type: String, required: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true },
+    role: {
+        type: String,
+        enum: ['guest', 'host', 'admin'],
         default: 'guest',
-        required: true 
+        required: true
     },
     isVerified: { type: Boolean, default: false },
     otp: { type: String },
@@ -42,38 +42,38 @@ const otpSchema = new mongoose.Schema({
 
 // Post Schema for experiences and properties
 const postSchema = new mongoose.Schema({
-    user: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'user', 
-        required: true 
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
     },
-    userRole: { 
-        type: String, 
-        enum: ['guest', 'host'], 
-        required: true 
+    userRole: {
+        type: String,
+        enum: ['guest', 'host'],
+        required: true
     },
-    postType: { 
-        type: String, 
-        enum: ['experience', 'service', 'plan', 'trek'], 
-        required: true 
+    postType: {
+        type: String,
+        enum: ['experience', 'service', 'plan', 'trek'],
+        required: true
     },
-    title: { 
-        type: String, 
+    title: {
+        type: String,
         required: true,
         trim: true,
         maxlength: 200
     },
-    description: { 
-        type: String, 
+    description: {
+        type: String,
         required: true,
         maxlength: 5000
     },
-    photos: [{ 
+    photos: [{
         url: { type: String },
         public_id: { type: String },
         resource_type: { type: String, default: 'image' }
     }],
-    videos: [{ 
+    videos: [{
         url: { type: String },
         public_id: { type: String },
         resource_type: { type: String, default: 'video' }
@@ -107,14 +107,14 @@ const postSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    price: { 
+    price: {
         amount: { type: Number, min: 0 },
         total: { type: Number, min: 0 },
         perPerson: { type: Number, min: 0 },
         currency: { type: String, default: 'INR' },
         period: { type: String, enum: ['night', 'hour', 'day', 'person', 'total'], default: 'person' }
     },
-    amenities: [{ 
+    amenities: [{
         type: String  // WiFi, Pool, Parking, etc.
     }],
     capacity: {
@@ -138,6 +138,12 @@ const postSchema = new mongoose.Schema({
         average: { type: Number, min: 0, max: 5, default: 0 },
         count: { type: Number, default: 0 }
     },
+    reactions: [{
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+        name: { type: String },
+        emoji: { type: String },
+        timestamp: { type: Date, default: Date.now }
+    }],
     status: {
         type: String,
         enum: ['active', 'inactive', 'pending', 'archived'],
