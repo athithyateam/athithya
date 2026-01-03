@@ -203,6 +203,7 @@ reviewSchema.index({ host: 1, reviewer: 1, post: 1 }, { unique: true, sparse: tr
 
 const User = mongoose.model("user", userSchema)
 const OTP = mongoose.model("otp", otpSchema)
+const Post = mongoose.model("post", postSchema)
 const Review = mongoose.model("review", reviewSchema)
 
 module.exports = { User, OTP, Post, Review } 
