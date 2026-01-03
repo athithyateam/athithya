@@ -207,8 +207,38 @@ reviewSchema.index({ rating: 1 })
 // Prevent duplicate reviews from same user to same host for same post
 reviewSchema.index({ host: 1, reviewer: 1, post: 1 }, { unique: true, sparse: true })
 
+// Notification Schema
+const notificationSchema = new mongoose.Schema({
+    recipient: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
+    },
+    sender: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    type: {
+        type: String,
+        enum: ['info', 'success', 'warning', 'error'],
+        default: 'info'
+    },
+    link: { type: String },
+    read: { type: Boolean, default: false },
+    metadata: {
+        postId: { type: mongoose.Schema.Types.ObjectId, ref: 'post' }
+    }
+}, { timestamps: true })
+
+notificationSchema.index({ recipient: 1, createdAt: -1 })
+notificationSchema.index({ recipient: 1, read: 1 })
+
 const User = mongoose.model("user", userSchema)
 const OTP = mongoose.model("otp", otpSchema)
+const Post = mongoose.model("post", postSchema)
 const Review = mongoose.model("review", reviewSchema)
+const Notification = mongoose.model("notification", notificationSchema)
 
-module.exports = { User, OTP, Post, Review } 
+module.exports = { User, OTP, Post, Review, Notification } 
