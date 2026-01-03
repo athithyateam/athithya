@@ -138,6 +138,12 @@ const postSchema = new mongoose.Schema({
         average: { type: Number, min: 0, max: 5, default: 0 },
         count: { type: Number, default: 0 }
     },
+    reactions: [{
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+        name: { type: String },
+        emoji: { type: String },
+        timestamp: { type: Date, default: Date.now }
+    }],
     status: {
         type: String,
         enum: ['active', 'inactive', 'pending', 'archived'],
@@ -145,65 +151,45 @@ const postSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
-// Indexes for better query performance
 postSchema.index({ user: 1, createdAt: -1 })
 postSchema.index({ postType: 1, status: 1 })
 postSchema.index({ 'location.city': 1, 'location.country': 1 })
 postSchema.index({ categories: 1 })
 postSchema.index({ isFeatured: 1, status: 1 })
 postSchema.index({ difficulty: 1, postType: 1 })
-// Geospatial index for nearby search
 postSchema.index({ 'location.coordinates': '2dsphere' })
 
-const Post = mongoose.model("post", postSchema)
-
-// Review Schema for host reviews
+// Review Schema
 const reviewSchema = new mongoose.Schema({
-    host: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
-        required: true
-    },
-    reviewer: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user',
-        required: true
-    },
-    reviewerRole: {
-        type: String,
-        enum: ['guest', 'host'],
-        required: true
-    },
-    post: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'post'
-    },
-    rating: {
-        type: Number,
-        required: true,
-        min: 1,
-        max: 5
-    },
-    comment: {
-        type: String,
-        required: true,
-        trim: true,
-        maxlength: 1000
-    }
+    host: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
+    reviewer: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
+    reviewerRole: { type: String, enum: ['guest', 'host'], required: true },
+    post: { type: mongoose.Schema.Types.ObjectId, ref: 'post' },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, required: true, trim: true, maxlength: 1000 }
 }, { timestamps: true })
 
-// Indexes for reviews
 reviewSchema.index({ host: 1, createdAt: -1 })
-reviewSchema.index({ reviewer: 1 })
-reviewSchema.index({ post: 1 })
-reviewSchema.index({ rating: 1 })
-
-// Prevent duplicate reviews from same user to same host for same post
 reviewSchema.index({ host: 1, reviewer: 1, post: 1 }, { unique: true, sparse: true })
+
+// Notification Schema
+const notificationSchema = new mongoose.Schema({
+    recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    type: { type: String, enum: ['info', 'success', 'warning', 'error'], default: 'info' },
+    link: { type: String },
+    read: { type: Boolean, default: false },
+    metadata: { postId: { type: mongoose.Schema.Types.ObjectId, ref: 'post' } }
+}, { timestamps: true })
+
+notificationSchema.index({ recipient: 1, createdAt: -1 })
 
 const User = mongoose.model("user", userSchema)
 const OTP = mongoose.model("otp", otpSchema)
 const Post = mongoose.model("post", postSchema)
 const Review = mongoose.model("review", reviewSchema)
+const Notification = mongoose.model("notification", notificationSchema)
 
-module.exports = { User, OTP, Post, Review } 
+module.exports = { User, OTP, Post, Review, Notification }
