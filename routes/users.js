@@ -285,14 +285,15 @@ userrouter.post("/signin", validateUser(signinSchema), async (req, res) => {
         // Ensure jwtkey exists
         const key = jwtkey || 'your-secret-key-change-this';
 
-        const token = jwt.sign({ userId: user._id, role: user.role }, key, { expiresIn: "30d" })
+        // Stringify ID to avoid issues with non-plain objects in JWT
+        const token = jwt.sign({ userId: user._id.toString(), role: user.role }, key, { expiresIn: "30d" })
 
         return res.status(200).json({
             success: true,
             message: "Login successful",
             token,
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 firstname: user.firstname,
                 lastname: user.lastname,
                 email: user.email,
@@ -310,9 +311,10 @@ userrouter.post("/signin", validateUser(signinSchema), async (req, res) => {
         })
         return res.status(500).json({
             success: false,
-            message: "Error logging in",
+            message: "Error logging in - " + error.message,
             error: error.message,
-            debugName: error.name
+            debugName: error.name,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         })
     }
 })
@@ -402,9 +404,6 @@ userrouter.post("/google", async (req, res) => {
         let user = await User.findOne({ email });
 
         if (!user) {
-            // Create new user if not exists
-            // Note: Google doesn't give password, so we generate a random hash or handle it differently
-            // For now, we'll set a random password as they should login via Google
             const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
             const hashedPass = await bcrypt.hash(randomPassword, 10);
 
@@ -416,38 +415,40 @@ userrouter.post("/google", async (req, res) => {
                 email,
                 password: hashedPass,
                 role: userRole,
-                isVerified: true, // Google emails are verified
-                avatar: picture
+                isVerified: true,
+                avatar: picture ? { url: picture } : undefined
             });
         }
 
-        // Check if user is verified (if they signed up manually before but didn't verify)
         if (!user.isVerified) {
             user.isVerified = true;
             await user.save();
         }
 
-        // Generate our JWT
-        const jwtToken = jwt.sign({ userId: user._id, role: user.role }, jwtkey, { expiresIn: "30d" });
+        const jwtToken = jwt.sign({ userId: user._id.toString(), role: user.role }, jwtkey, { expiresIn: "30d" });
 
         return res.status(200).json({
             success: true,
             message: "Google login successful",
             token: jwtToken,
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 firstname: user.firstname,
                 lastname: user.lastname,
                 email: user.email,
                 role: user.role,
-                avatar: user.avatar,
-                description: user.description
+                avatar: user.avatar || null,
+                description: user.description || ""
             }
         });
 
     } catch (error) {
         console.error("Google signin error:", error);
-        return res.status(500).json({ success: false, message: "Error with Google signin" });
+        return res.status(500).json({
+            success: false,
+            message: "Error with Google signin - " + error.message,
+            error: error.message
+        });
     }
 })
 
