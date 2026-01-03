@@ -90,7 +90,6 @@ app.use("/api/users", userRoutes); // Add users route for profile endpoint
 app.use("/api/posts", postRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/itineraries", itineraryRoutes);
-app.use("/api/notifications", require("./routes/notifications"));
 
 // Health check
 app.get("/health", (req, res) => {
