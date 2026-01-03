@@ -15,7 +15,7 @@ notificationRouter.get("/", checkAuth, async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit)
 
         const notifications = await Notification.find(filter)
-            .populate('sender', 'firstname lastname')
+            .populate('sender', 'firstname lastname avatar')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)

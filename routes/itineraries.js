@@ -4,7 +4,7 @@ const { checkAuth } = require("../middleware/checkRole")
 const cloudinary = require("../utils/cloudinary")
 const multer = require("multer")
 const storage = multer.memoryStorage()
-const upload = multer({ 
+const upload = multer({
     storage,
     limits: {
         fileSize: 3 * 1024 * 1024 // 3MB
@@ -35,11 +35,11 @@ const handleMulterError = (err, req, res, next) => {
 itineraryRouter.post("/", checkAuth, upload.fields([
     { name: "photos", maxCount: 10 },
     { name: "videos", maxCount: 5 }
-]), handleMulterError, async(req, res) => {
+]), handleMulterError, async (req, res) => {
     console.log('=== DEBUG: req.body ===', req.body);
     console.log('=== DEBUG: req.files ===', req.files);
     console.log('=== DEBUG: req.headers[content-type] ===', req.headers['content-type']);
-    
+
     try {
         // Ensure req.body exists and has required fields
         const title = req.body?.title;
@@ -82,9 +82,9 @@ itineraryRouter.post("/", checkAuth, upload.fields([
 
         // Validation
         if (!title || !description) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Title and description are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Title and description are required"
             })
         }
 
@@ -150,39 +150,39 @@ itineraryRouter.post("/", checkAuth, upload.fields([
             videos: videoUrls
         })
 
-        return res.status(201).json({ 
-            success: true, 
+        return res.status(201).json({
+            success: true,
             message: "Itinerary created successfully",
-            itinerary 
+            itinerary
         })
     } catch (error) {
         console.error("Create itinerary error:", error)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error creating itinerary",
-            error: error.message 
+            error: error.message
         })
     }
 })
 
 // GET ALL ITINERARIES - Public (with filtering)
-itineraryRouter.get("/", async(req, res) => {
+itineraryRouter.get("/", async (req, res) => {
     try {
-        const { 
+        const {
             city, country, state,
-            minPrice, maxPrice, tags, 
+            minPrice, maxPrice, tags,
             difficulty, categories,
-            page = 1, limit = 20 
+            page = 1, limit = 20
         } = req.query
 
         // Build filter query - only for plan postType
         const filter = { postType: 'plan', status: 'active' }
-        
+
         if (city) filter['location.city'] = new RegExp(city, 'i')
         if (state) filter['location.state'] = new RegExp(state, 'i')
         if (country) filter['location.country'] = new RegExp(country, 'i')
         if (tags) filter.tags = { $in: tags.split(',') }
-        
+
         if (difficulty) filter.difficulty = difficulty
         if (categories) filter.categories = { $in: categories.split(',') }
 
@@ -194,22 +194,22 @@ itineraryRouter.get("/", async(req, res) => {
         }
 
         const skip = (Number(page) - 1) * Number(limit)
-        
+
         const itineraries = await Post.find(filter)
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)
 
         const total = await Post.countDocuments(filter)
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: itineraries.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            itineraries 
+            itineraries
         })
     } catch (error) {
         console.error("Get itineraries error:", error)
@@ -218,10 +218,10 @@ itineraryRouter.get("/", async(req, res) => {
 })
 
 // GET SINGLE ITINERARY BY ID - Public
-itineraryRouter.get("/:id", async(req, res) => {
+itineraryRouter.get("/:id", async (req, res) => {
     try {
         const itinerary = await Post.findById(req.params.id)
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
 
         if (!itinerary) {
             return res.status(404).json({ success: false, message: "Itinerary not found" })
@@ -239,19 +239,19 @@ itineraryRouter.get("/:id", async(req, res) => {
 })
 
 // GET USER'S ITINERARIES - Public (view anyone's itineraries)
-itineraryRouter.get("/user/:userId", async(req, res) => {
+itineraryRouter.get("/user/:userId", async (req, res) => {
     try {
-        const itineraries = await Post.find({ 
+        const itineraries = await Post.find({
             user: req.params.userId,
             postType: 'plan'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: itineraries.length,
-            itineraries 
+            itineraries
         })
     } catch (error) {
         console.error("Get user itineraries error:", error)
@@ -260,18 +260,18 @@ itineraryRouter.get("/user/:userId", async(req, res) => {
 })
 
 // GET MY ITINERARIES - Authenticated user's own itineraries
-itineraryRouter.get("/my/itineraries", checkAuth, async(req, res) => {
+itineraryRouter.get("/my/itineraries", checkAuth, async (req, res) => {
     try {
-        const itineraries = await Post.find({ 
+        const itineraries = await Post.find({
             user: req.user.userId,
             postType: 'plan'
         })
             .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: itineraries.length,
-            itineraries 
+            itineraries
         })
     } catch (error) {
         console.error("Get my itineraries error:", error)
@@ -280,7 +280,7 @@ itineraryRouter.get("/my/itineraries", checkAuth, async(req, res) => {
 })
 
 // UPDATE ITINERARY - Only itinerary owner
-itineraryRouter.put("/:id", checkAuth, async(req, res) => {
+itineraryRouter.put("/:id", checkAuth, async (req, res) => {
     try {
         const itinerary = await Post.findById(req.params.id)
 
@@ -294,14 +294,14 @@ itineraryRouter.put("/:id", checkAuth, async(req, res) => {
 
         // Check if user is the owner
         if (itinerary.user.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only edit your own itineraries" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only edit your own itineraries"
             })
         }
 
-        const { 
-            title, description, location, 
+        const {
+            title, description, location,
             planName, priceTotal, pricePerPerson, maxPeople,
             duration, difficulty, tags, status, categories
         } = req.body
@@ -331,7 +331,7 @@ itineraryRouter.put("/:id", checkAuth, async(req, res) => {
 
         if (tags) itinerary.tags = tags
         if (status) itinerary.status = status
-        
+
         // Update itinerary-specific fields
         if (duration) itinerary.duration = duration
         if (difficulty) itinerary.difficulty = difficulty
@@ -339,10 +339,10 @@ itineraryRouter.put("/:id", checkAuth, async(req, res) => {
 
         await itinerary.save()
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: "Itinerary updated successfully",
-            itinerary 
+            itinerary
         })
     } catch (error) {
         console.error("Update itinerary error:", error)
@@ -351,7 +351,7 @@ itineraryRouter.put("/:id", checkAuth, async(req, res) => {
 })
 
 // DELETE ITINERARY - Only itinerary owner
-itineraryRouter.delete("/:id", checkAuth, async(req, res) => {
+itineraryRouter.delete("/:id", checkAuth, async (req, res) => {
     try {
         const itinerary = await Post.findById(req.params.id)
 
@@ -365,17 +365,17 @@ itineraryRouter.delete("/:id", checkAuth, async(req, res) => {
 
         // Check if user is the owner
         if (itinerary.user.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only delete your own itineraries" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete your own itineraries"
             })
         }
 
         await Post.findByIdAndDelete(req.params.id)
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Itinerary deleted successfully" 
+        return res.status(200).json({
+            success: true,
+            message: "Itinerary deleted successfully"
         })
     } catch (error) {
         console.error("Delete itinerary error:", error)

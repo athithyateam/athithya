@@ -4,48 +4,48 @@ const { checkAuth } = require("../middleware/checkRole")
 const reviewRouter = express.Router()
 
 // CREATE REVIEW - Authenticated users can review hosts
-reviewRouter.post("/", checkAuth, async(req, res) => {
+reviewRouter.post("/", checkAuth, async (req, res) => {
     try {
         const { hostId, postId, rating, comment } = req.body
 
         // Validation
         if (!hostId || !rating || !comment) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Host ID, rating, and comment are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Host ID, rating, and comment are required"
             })
         }
 
         // Check if host exists and is actually a host
         const host = await User.findById(hostId)
         if (!host) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Host not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Host not found"
             })
         }
 
         if (host.role !== 'host') {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Reviews can only be given to hosts" 
+            return res.status(400).json({
+                success: false,
+                message: "Reviews can only be given to hosts"
             })
         }
 
         // Users cannot review themselves
         if (req.user.userId === hostId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "You cannot review yourself" 
+            return res.status(400).json({
+                success: false,
+                message: "You cannot review yourself"
             })
         }
 
         // Validate rating
         const ratingNum = Number(rating)
         if (ratingNum < 1 || ratingNum > 5) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Rating must be between 1 and 5" 
+            return res.status(400).json({
+                success: false,
+                message: "Rating must be between 1 and 5"
             })
         }
 
@@ -53,17 +53,17 @@ reviewRouter.post("/", checkAuth, async(req, res) => {
         if (postId) {
             const post = await Post.findById(postId)
             if (!post) {
-                return res.status(404).json({ 
-                    success: false, 
-                    message: "Post not found" 
+                return res.status(404).json({
+                    success: false,
+                    message: "Post not found"
                 })
             }
 
             // Check if the post belongs to the host
             if (post.user.toString() !== hostId) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "This post does not belong to the specified host" 
+                return res.status(400).json({
+                    success: false,
+                    message: "This post does not belong to the specified host"
                 })
             }
 
@@ -75,9 +75,9 @@ reviewRouter.post("/", checkAuth, async(req, res) => {
             })
 
             if (existingReview) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "You have already reviewed this host for this post" 
+                return res.status(400).json({
+                    success: false,
+                    message: "You have already reviewed this host for this post"
                 })
             }
         }
@@ -93,21 +93,21 @@ reviewRouter.post("/", checkAuth, async(req, res) => {
         })
 
         const populatedReview = await Review.findById(review._id)
-            .populate('reviewer', 'firstname lastname email role')
-            .populate('host', 'firstname lastname email role')
+            .populate('reviewer', 'firstname lastname email role avatar')
+            .populate('host', 'firstname lastname email role avatar')
             .populate('post', 'title postType')
 
-        return res.status(201).json({ 
-            success: true, 
+        return res.status(201).json({
+            success: true,
             message: "Review created successfully",
-            review: populatedReview 
+            review: populatedReview
         })
     } catch (error) {
         console.error("Create review error:", error)
         if (error.code === 11000) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "You have already reviewed this host for this post" 
+            return res.status(400).json({
+                success: false,
+                message: "You have already reviewed this host for this post"
             })
         }
         return res.status(500).json({ success: false, message: "Error creating review" })
@@ -115,15 +115,15 @@ reviewRouter.post("/", checkAuth, async(req, res) => {
 })
 
 // GET ALL REVIEWS FOR A HOST - Public
-reviewRouter.get("/host/:hostId", async(req, res) => {
+reviewRouter.get("/host/:hostId", async (req, res) => {
     try {
-        const { 
-            rating, 
-            page = 1, 
-            limit = 20 
+        const {
+            rating,
+            page = 1,
+            limit = 20
         } = req.query
 
-        const filter = { 
+        const filter = {
             host: req.params.hostId
         }
 
@@ -132,7 +132,7 @@ reviewRouter.get("/host/:hostId", async(req, res) => {
         const skip = (Number(page) - 1) * Number(limit)
 
         const reviews = await Review.find(filter)
-            .populate('reviewer', 'firstname lastname email role')
+            .populate('reviewer', 'firstname lastname email role avatar')
             .populate('post', 'title postType')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
@@ -141,12 +141,12 @@ reviewRouter.get("/host/:hostId", async(req, res) => {
         const total = await Review.countDocuments(filter)
 
         // Calculate average rating and rating distribution
-        const allReviews = await Review.find({ 
+        const allReviews = await Review.find({
             host: req.params.hostId
         })
 
-        const avgRating = allReviews.length > 0 
-            ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length 
+        const avgRating = allReviews.length > 0
+            ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
             : 0
 
         const ratingDistribution = {
@@ -157,7 +157,7 @@ reviewRouter.get("/host/:hostId", async(req, res) => {
             1: allReviews.filter(r => r.rating === 1).length
         }
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: reviews.length,
             total,
@@ -166,7 +166,7 @@ reviewRouter.get("/host/:hostId", async(req, res) => {
             averageRating: Number(avgRating.toFixed(2)),
             totalReviews: allReviews.length,
             ratingDistribution,
-            reviews 
+            reviews
         })
     } catch (error) {
         console.error("Get host reviews error:", error)
@@ -175,14 +175,14 @@ reviewRouter.get("/host/:hostId", async(req, res) => {
 })
 
 // GET REVIEWS BY REVIEWER - Get all reviews written by a user
-reviewRouter.get("/reviewer/:reviewerId", async(req, res) => {
+reviewRouter.get("/reviewer/:reviewerId", async (req, res) => {
     try {
         const { page = 1, limit = 20 } = req.query
 
         const skip = (Number(page) - 1) * Number(limit)
 
         const reviews = await Review.find({ reviewer: req.params.reviewerId })
-            .populate('host', 'firstname lastname email role')
+            .populate('host', 'firstname lastname email role avatar')
             .populate('post', 'title postType')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
@@ -190,13 +190,13 @@ reviewRouter.get("/reviewer/:reviewerId", async(req, res) => {
 
         const total = await Review.countDocuments({ reviewer: req.params.reviewerId })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: reviews.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            reviews 
+            reviews
         })
     } catch (error) {
         console.error("Get reviewer reviews error:", error)
@@ -205,17 +205,17 @@ reviewRouter.get("/reviewer/:reviewerId", async(req, res) => {
 })
 
 // GET MY REVIEWS - Get reviews written by authenticated user
-reviewRouter.get("/my/reviews", checkAuth, async(req, res) => {
+reviewRouter.get("/my/reviews", checkAuth, async (req, res) => {
     try {
         const reviews = await Review.find({ reviewer: req.user.userId })
-            .populate('host', 'firstname lastname email role')
+            .populate('host', 'firstname lastname email role avatar')
             .populate('post', 'title postType')
             .sort({ createdAt: -1 })
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: reviews.length,
-            reviews 
+            reviews
         })
     } catch (error) {
         console.error("Get my reviews error:", error)
@@ -224,22 +224,22 @@ reviewRouter.get("/my/reviews", checkAuth, async(req, res) => {
 })
 
 // GET REVIEWS RECEIVED BY ME (for hosts) - Get reviews received by authenticated user
-reviewRouter.get("/received", checkAuth, async(req, res) => {
+reviewRouter.get("/received", checkAuth, async (req, res) => {
     try {
         if (req.user.role !== 'host') {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Only hosts can view received reviews" 
+            return res.status(403).json({
+                success: false,
+                message: "Only hosts can view received reviews"
             })
         }
 
-        const { 
-            rating, 
-            page = 1, 
-            limit = 20 
+        const {
+            rating,
+            page = 1,
+            limit = 20
         } = req.query
 
-        const filter = { 
+        const filter = {
             host: req.user.userId
         }
 
@@ -248,7 +248,7 @@ reviewRouter.get("/received", checkAuth, async(req, res) => {
         const skip = (Number(page) - 1) * Number(limit)
 
         const reviews = await Review.find(filter)
-            .populate('reviewer', 'firstname lastname email role')
+            .populate('reviewer', 'firstname lastname email role avatar')
             .populate('post', 'title postType')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
@@ -256,13 +256,13 @@ reviewRouter.get("/received", checkAuth, async(req, res) => {
 
         const total = await Review.countDocuments(filter)
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             success: true,
             count: reviews.length,
             total,
             page: Number(page),
             totalPages: Math.ceil(total / Number(limit)),
-            reviews 
+            reviews
         })
     } catch (error) {
         console.error("Get received reviews error:", error)
@@ -271,11 +271,11 @@ reviewRouter.get("/received", checkAuth, async(req, res) => {
 })
 
 // GET SINGLE REVIEW BY ID
-reviewRouter.get("/:id", async(req, res) => {
+reviewRouter.get("/:id", async (req, res) => {
     try {
         const review = await Review.findById(req.params.id)
-            .populate('reviewer', 'firstname lastname email role')
-            .populate('host', 'firstname lastname email role')
+            .populate('reviewer', 'firstname lastname email role avatar')
+            .populate('host', 'firstname lastname email role avatar')
             .populate('post', 'title postType')
 
         if (!review) {
@@ -290,7 +290,7 @@ reviewRouter.get("/:id", async(req, res) => {
 })
 
 // UPDATE REVIEW - Only review owner
-reviewRouter.put("/:id", checkAuth, async(req, res) => {
+reviewRouter.put("/:id", checkAuth, async (req, res) => {
     try {
         const review = await Review.findById(req.params.id)
 
@@ -300,9 +300,9 @@ reviewRouter.put("/:id", checkAuth, async(req, res) => {
 
         // Check if user is the review owner
         if (review.reviewer.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only edit your own reviews" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only edit your own reviews"
             })
         }
 
@@ -312,9 +312,9 @@ reviewRouter.put("/:id", checkAuth, async(req, res) => {
         if (rating !== undefined) {
             const ratingNum = Number(rating)
             if (ratingNum < 1 || ratingNum > 5) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Rating must be between 1 and 5" 
+                return res.status(400).json({
+                    success: false,
+                    message: "Rating must be between 1 and 5"
                 })
             }
             review.rating = ratingNum
@@ -324,14 +324,14 @@ reviewRouter.put("/:id", checkAuth, async(req, res) => {
         await review.save()
 
         const updatedReview = await Review.findById(review._id)
-            .populate('reviewer', 'firstname lastname email role')
-            .populate('host', 'firstname lastname email role')
+            .populate('reviewer', 'firstname lastname email role avatar')
+            .populate('host', 'firstname lastname email role avatar')
             .populate('post', 'title postType')
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: "Review updated successfully",
-            review: updatedReview 
+            review: updatedReview
         })
     } catch (error) {
         console.error("Update review error:", error)
@@ -340,7 +340,7 @@ reviewRouter.put("/:id", checkAuth, async(req, res) => {
 })
 
 // DELETE REVIEW - Only review owner
-reviewRouter.delete("/:id", checkAuth, async(req, res) => {
+reviewRouter.delete("/:id", checkAuth, async (req, res) => {
     try {
         const review = await Review.findById(req.params.id)
 
@@ -350,17 +350,17 @@ reviewRouter.delete("/:id", checkAuth, async(req, res) => {
 
         // Check if user is the review owner
         if (review.reviewer.toString() !== req.user.userId) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "You can only delete your own reviews" 
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete your own reviews"
             })
         }
 
         await Review.findByIdAndDelete(req.params.id)
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Review deleted successfully" 
+        return res.status(200).json({
+            success: true,
+            message: "Review deleted successfully"
         })
     } catch (error) {
         console.error("Delete review error:", error)

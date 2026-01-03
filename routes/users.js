@@ -779,7 +779,7 @@ userrouter.get("/profile/:userId", async (req, res) => {
         if (user.role === 'host') {
             const { Review } = require("../db/mongoose")
             reviews = await Review.find({ host: userId })
-                .populate('reviewer', 'firstname lastname')
+                .populate('reviewer', 'firstname lastname avatar')
                 .sort({ createdAt: -1 })
                 .limit(10) // Latest 10 reviews
 
@@ -808,6 +808,8 @@ userrouter.get("/profile/:userId", async (req, res) => {
                     lastname: user.lastname,
                     email: user.email,
                     role: user.role,
+                    avatar: user.avatar,
+                    description: user.description,
                     isVerified: user.isVerified,
                     location: user.location,
                     createdAt: user.createdAt,
@@ -922,6 +924,7 @@ userrouter.get("/top-rated/hosts", async (req, res) => {
                     role: '$hostDetails.role',
                     isVerified: '$hostDetails.isVerified',
                     location: '$hostDetails.location',
+                    avatar: '$hostDetails.avatar',
                     createdAt: '$hostDetails.createdAt',
                     updatedAt: '$hostDetails.updatedAt',
                     averageRating: { $round: ['$averageRating', 1] },

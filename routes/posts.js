@@ -224,7 +224,7 @@ postRouter.get("/", async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit)
 
         const posts = await Post.find(filter)
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ isFeatured: -1, createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)
@@ -258,7 +258,7 @@ postRouter.get("/all/treks", async (req, res) => {
             postType: 'trek',
             status: 'active'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ isFeatured: -1, createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)
@@ -289,7 +289,7 @@ postRouter.get("/featured/treks", async (req, res) => {
             isFeatured: true,
             status: 'active'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
 
@@ -401,7 +401,8 @@ postRouter.get("/top-rated/treks", async (req, res) => {
                                         firstname: '$$user.firstname',
                                         lastname: '$$user.lastname',
                                         email: '$$user.email',
-                                        role: '$$user.role'
+                                        role: '$$user.role',
+                                        avatar: '$$user.avatar'
                                     }
                                 }
                             },
@@ -486,7 +487,7 @@ postRouter.get("/nearby/treks", async (req, res) => {
         }
 
         const treks = await Post.find(filter)
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .limit(Number(limit))
 
         // Calculate distance for each trek (in kilometers)
@@ -547,7 +548,7 @@ function toRadians(degrees) {
 postRouter.get("/user/:userId", async (req, res) => {
     try {
         const posts = await Post.find({ user: req.params.userId })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
 
         return res.status(200).json({
@@ -964,7 +965,7 @@ postRouter.get("/experiences", async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit)
 
         const experiences = await Post.find(filter)
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ isFeatured: -1, createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)
@@ -998,7 +999,7 @@ postRouter.get("/experiences/featured/list", async (req, res) => {
             isFeatured: true,
             status: 'active'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
 
@@ -1046,7 +1047,7 @@ postRouter.get("/experiences/user/:userId", async (req, res) => {
             postType: 'experience',
             status: 'active'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
 
         return res.status(200).json({
@@ -1099,7 +1100,7 @@ postRouter.get("/experiences/user/:userId", async (req, res) => {
             postType: 'experience',
             status: 'active'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
 
         return res.status(200).json({
@@ -1424,7 +1425,7 @@ postRouter.get("/services", async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit)
 
         const services = await Post.find(filter)
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ isFeatured: -1, createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)
@@ -1486,7 +1487,7 @@ postRouter.get("/services/featured/list", async (req, res) => {
             isFeatured: true,
             status: 'active'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
             .limit(Number(limit))
 
@@ -1541,7 +1542,7 @@ postRouter.get("/services/host/:userId", async (req, res) => {
             postType: 'service',
             status: 'active'
         })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort({ createdAt: -1 })
 
         return res.status(200).json({
@@ -1861,7 +1862,7 @@ postRouter.get("/treks", async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit)
 
         const treks = await Post.find(filter)
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
             .sort(sortOptions)
             .limit(Number(limit))
             .skip(skip)
@@ -1886,7 +1887,7 @@ postRouter.get("/treks", async (req, res) => {
 postRouter.get("/treks/:id", async (req, res) => {
     try {
         const trek = await Post.findOne({ _id: req.params.id, postType: 'trek' })
-            .populate('user', 'firstname lastname email role')
+            .populate('user', 'firstname lastname email role avatar')
 
         if (!trek) {
             return res.status(404).json({ success: false, message: "Trek not found" })
