@@ -280,7 +280,10 @@ itineraryRouter.get("/my/itineraries", checkAuth, async (req, res) => {
 })
 
 // UPDATE ITINERARY - Only itinerary owner
-itineraryRouter.put("/:id", checkAuth, async (req, res) => {
+itineraryRouter.put("/:id", checkAuth, upload.fields([
+    { name: "photos", maxCount: 10 },
+    { name: "videos", maxCount: 5 }
+]), handleMulterError, async (req, res) => {
     try {
         const itinerary = await Post.findById(req.params.id)
 
@@ -303,13 +306,91 @@ itineraryRouter.put("/:id", checkAuth, async (req, res) => {
         const {
             title, description, location,
             planName, priceTotal, pricePerPerson, maxPeople,
-            duration, difficulty, tags, status, categories
+            duration, difficulty, tags, status, categories, availability,
+            existingPhotos: existingPhotosStr,
+            existingVideos: existingVideosStr
         } = req.body
+
+        // helper to parse JSON fields
+        const parseIfJson = (value) => {
+            if (!value) return undefined
+            if (typeof value === 'object') return value
+            try {
+                if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
+                    return JSON.parse(value)
+                }
+            } catch (e) { }
+            return value
+        }
+
+        const parsedLocation = parseIfJson(location)
+        const parsedPrice = parseIfJson(priceTotal || pricePerPerson) ? null : {} // just for structure
+        const parsedDuration = parseIfJson(duration)
+        const parsedCapacity = parseIfJson(maxPeople) ? null : {}
+        const parsedTags = parseIfJson(tags)
+        const parsedCategories = parseIfJson(categories)
+        const parsedAvailability = parseIfJson(availability)
+        const existingPhotos = parseIfJson(existingPhotosStr) || []
+        const existingVideos = parseIfJson(existingVideosStr) || []
+
+        // Cloudinary cleanup for removed photos
+        const currentPhotoIds = existingPhotos.map(p => p.public_id).filter(id => id)
+        for (const photo of (itinerary.photos || [])) {
+            if (photo.public_id && !currentPhotoIds.includes(photo.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(photo.public_id)
+                } catch (err) {
+                    console.error("Cloudinary photo delete error during update:", err)
+                }
+            }
+        }
+
+        // Cloudinary cleanup for removed videos
+        const currentVideoIds = existingVideos.map(v => v.public_id).filter(id => id)
+        for (const video of (itinerary.videos || [])) {
+            if (video.public_id && !currentVideoIds.includes(video.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(video.public_id, { resource_type: 'video' })
+                } catch (err) {
+                    console.error("Cloudinary video delete error during update:", err)
+                }
+            }
+        }
+
+        // Upload new files
+        const uploadToCloudinary = (file, resourceType) => {
+            return new Promise((resolve, reject) => {
+                cloudinary.uploader.upload_stream({ resource_type: resourceType }, (error, result) => {
+                    if (error) return reject(error);
+                    resolve(result);
+                }).end(file.buffer);
+            });
+        };
+
+        let newPhotos = []
+        if (req.files && req.files["photos"]) {
+            for (const file of req.files["photos"]) {
+                const result = await uploadToCloudinary(file, "image");
+                newPhotos.push({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type || 'image' });
+            }
+        }
+
+        let newVideos = []
+        if (req.files && req.files["videos"]) {
+            for (const file of req.files["videos"]) {
+                const result = await uploadToCloudinary(file, "video");
+                newVideos.push({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type || 'video' });
+            }
+        }
 
         // Update fields
         if (title) itinerary.title = title
         if (description) itinerary.description = description
-        if (location) itinerary.location = { ...itinerary.location, ...location }
+
+        itinerary.photos = [...existingPhotos, ...newPhotos]
+        itinerary.videos = [...existingVideos, ...newVideos]
+
+        if (parsedLocation) itinerary.location = { ...itinerary.location, ...parsedLocation }
 
         // update price
         if (priceTotal || pricePerPerson) {
@@ -329,13 +410,14 @@ itineraryRouter.put("/:id", checkAuth, async (req, res) => {
             itinerary.plan = { ...(itinerary.plan || {}), name: planName }
         }
 
-        if (tags) itinerary.tags = tags
+        if (parsedTags) itinerary.tags = parsedTags
+        if (parsedCategories) itinerary.categories = parsedCategories
+        if (parsedAvailability) itinerary.availability = parsedAvailability
         if (status) itinerary.status = status
 
         // Update itinerary-specific fields
-        if (duration) itinerary.duration = duration
+        if (parsedDuration) itinerary.duration = parsedDuration
         if (difficulty) itinerary.difficulty = difficulty
-        if (categories) itinerary.categories = categories
 
         await itinerary.save()
 
@@ -346,7 +428,7 @@ itineraryRouter.put("/:id", checkAuth, async (req, res) => {
         })
     } catch (error) {
         console.error("Update itinerary error:", error)
-        return res.status(500).json({ success: false, message: "Error updating itinerary" })
+        return res.status(500).json({ success: false, message: "Error updating itinerary", error: error.message })
     }
 })
 

@@ -580,7 +580,10 @@ postRouter.get("/my/posts", checkAuth, async (req, res) => {
 })
 
 // UPDATE POST - Only post owner
-postRouter.put("/:id", checkAuth, async (req, res) => {
+postRouter.put("/:id", checkAuth, upload.fields([
+    { name: "photos", maxCount: 10 },
+    { name: "videos", maxCount: 5 }
+]), handleMulterError, async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
 
@@ -597,10 +600,12 @@ postRouter.put("/:id", checkAuth, async (req, res) => {
         }
 
         const {
-            title, description, images, location,
+            title, description, location,
             price, amenities, capacity, availability, status,
             planName, priceTotal, pricePerPerson, maxPeople,
-            duration, difficulty, isFeatured
+            duration, difficulty, categories, isFeatured,
+            existingPhotos: existingPhotosStr,
+            existingVideos: existingVideosStr
         } = req.body
 
         const parseIfJson = (value) => {
@@ -617,11 +622,67 @@ postRouter.put("/:id", checkAuth, async (req, res) => {
         const parsedPrice = parseIfJson(price)
         const parsedCapacity = parseIfJson(capacity)
         const parsedLocation = parseIfJson(location)
+        const existingPhotos = parseIfJson(existingPhotosStr) || []
+        const existingVideos = parseIfJson(existingVideosStr) || []
+
+        // Handle Photos Deletion from Cloudinary
+        const currentPhotoIds = existingPhotos.map(p => p.public_id).filter(id => id)
+        for (const photo of (post.photos || [])) {
+            if (photo.public_id && !currentPhotoIds.includes(photo.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(photo.public_id)
+                } catch (err) {
+                    console.error("Cloudinary photo delete error during update:", err)
+                }
+            }
+        }
+
+        // Handle Videos Deletion from Cloudinary
+        const currentVideoIds = existingVideos.map(v => v.public_id).filter(id => id)
+        for (const video of (post.videos || [])) {
+            if (video.public_id && !currentVideoIds.includes(video.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(video.public_id, { resource_type: 'video' })
+                } catch (err) {
+                    console.error("Cloudinary video delete error during update:", err)
+                }
+            }
+        }
+
+        // Upload New Files
+        const uploadToCloudinary = (file, resourceType) => {
+            return new Promise((resolve, reject) => {
+                cloudinary.uploader.upload_stream({ resource_type: resourceType }, (error, result) => {
+                    if (error) return reject(error);
+                    resolve(result);
+                }).end(file.buffer);
+            });
+        };
+
+        let newPhotos = []
+        if (req.files && req.files["photos"]) {
+            for (const file of req.files["photos"]) {
+                const result = await uploadToCloudinary(file, "image");
+                newPhotos.push({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type || 'image' });
+            }
+        }
+
+        let newVideos = []
+        if (req.files && req.files["videos"]) {
+            for (const file of req.files["videos"]) {
+                const result = await uploadToCloudinary(file, "video");
+                newVideos.push({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type || 'video' });
+            }
+        }
 
         // Update fields
         if (title) post.title = title
         if (description) post.description = description
-        if (images) post.images = images
+
+        // Merge existing and new photos/videos
+        post.photos = [...existingPhotos, ...newPhotos]
+        post.videos = [...existingVideos, ...newVideos]
+
         if (parsedLocation || location) post.location = { ...post.location, ...(parsedLocation || location) }
 
         // update price
@@ -631,7 +692,8 @@ postRouter.put("/:id", checkAuth, async (req, res) => {
             if (pricePerPerson) post.price.perPerson = Number(pricePerPerson)
         }
 
-        if (amenities) post.amenities = amenities
+        if (amenities) post.amenities = parseIfJson(amenities)
+        if (categories) post.categories = parseIfJson(categories)
 
         // update capacity
         if (parsedCapacity || maxPeople) {
@@ -644,7 +706,7 @@ postRouter.put("/:id", checkAuth, async (req, res) => {
             post.plan = { ...(post.plan || {}), name: planName }
         }
 
-        if (availability) post.availability = { ...post.availability, ...availability }
+        if (availability) post.availability = { ...post.availability, ...parseIfJson(availability) }
         if (status) post.status = status
 
         // Update trek-specific fields
@@ -661,7 +723,7 @@ postRouter.put("/:id", checkAuth, async (req, res) => {
         })
     } catch (error) {
         console.error("Update post error:", error)
-        return res.status(500).json({ success: false, message: "Error updating post" })
+        return res.status(500).json({ success: false, message: "Error updating post", error: error.message })
     }
 })
 
