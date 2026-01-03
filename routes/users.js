@@ -1,5 +1,6 @@
 const express = require("express")
 const bcrypt = require("bcrypt")
+const axios = require("axios")
 const { OAuth2Client } = require("google-auth-library")
 const { validateUser, signupSchema, signinSchema, otpCompleteSchema } = require("../middleware/validateUser")
 const { jwt, jwtkey } = require("../jwt/jwt")
@@ -9,6 +10,7 @@ const { checkAuth, checkAdmin, checkHost } = require("../middleware/checkRole")
 const validateReq = require("../middleware/validateReq")
 const cloudinary = require("../utils/cloudinary")
 const multer = require("multer")
+
 const storage = multer.memoryStorage()
 const upload = multer({
     storage,
@@ -270,15 +272,21 @@ userrouter.post("/signin", validateUser(signinSchema), async (req, res) => {
     try {
         const user = await User.findOne({ email })
         if (!user) {
+            console.log(`Signin failed: User not found for email ${email}`);
             return res.status(400).json({ success: false, message: "Invalid credentials" })
         }
 
         const isMatch = await bcrypt.compare(password, user.password)
         if (!isMatch) {
+            console.log(`Signin failed: Password mismatch for email ${email}`);
             return res.status(400).json({ success: false, message: "Invalid credentials" })
         }
 
-        const token = jwt.sign({ userId: user._id, role: user.role }, jwtkey, { expiresIn: "30d" })
+        // Ensure jwtkey exists
+        const key = jwtkey || 'your-secret-key-change-this';
+
+        const token = jwt.sign({ userId: user._id, role: user.role }, key, { expiresIn: "30d" })
+
         return res.status(200).json({
             success: true,
             message: "Login successful",
@@ -289,14 +297,23 @@ userrouter.post("/signin", validateUser(signinSchema), async (req, res) => {
                 lastname: user.lastname,
                 email: user.email,
                 role: user.role,
-                isVerified: user.isVerified,
-                avatar: user.avatar,
-                description: user.description
+                isVerified: user.isVerified || false,
+                avatar: user.avatar || null,
+                description: user.description || ""
             }
         })
     } catch (error) {
-        console.error("Signin error:", error)
-        return res.status(500).json({ success: false, message: "Error logging in" })
+        console.error("DETAILED Signin error:", {
+            error: error.message,
+            stack: error.stack,
+            email: email
+        })
+        return res.status(500).json({
+            success: false,
+            message: "Error logging in",
+            error: error.message,
+            debugName: error.name
+        })
     }
 })
 
@@ -369,8 +386,6 @@ userrouter.post("/reset-password", async (req, res) => {
         return res.status(500).json({ success: false, message: "Error resetting password" })
     }
 })
-
-const axios = require("axios");
 
 // GOOGLE SIGNIN
 userrouter.post("/google", async (req, res) => {
