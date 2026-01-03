@@ -1,12 +1,19 @@
 const mongoose = require("mongoose")
 
-require("dotenv").config()
-mongoose.connect(`${process.env.MONGO_URL}`, {
-    serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
+const MONGO_URL = process.env.MONGO_URL;
+
+if (!MONGO_URL) {
+    console.error("❌ ERROR: MONGO_URL is not defined in environment variables!");
+}
+
+mongoose.connect(MONGO_URL || "", {
+    serverSelectionTimeoutMS: 5000, // Reduced to 5s for Vercel
     socketTimeoutMS: 45000,
 })
-    .then(() => { console.log("connected to mongoDB") })
-    .catch((error) => { console.error("connection error", error) })
+    .then(() => { console.log("✅ Connected to MongoDB") })
+    .catch((error) => {
+        console.error("❌ MongoDB connection error:", error.message);
+    });
 
 const userSchema = new mongoose.Schema({
     firstname: { type: String, required: true },

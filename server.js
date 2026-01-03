@@ -18,7 +18,7 @@ const allowedOrigins = [
   "https://www.athithya.in",
   "https://api.athithya.in",
   process.env.FRONTEND_URL,
-].filter(Boolean);
+].filter(Boolean).map(o => o.replace(/\/$/, ""));
 
 // 1. MANUAL CORS & PREFLIGHT - MUST BE FIRST
 app.use((req, res, next) => {
@@ -31,11 +31,14 @@ app.use((req, res, next) => {
     origin.endsWith(".athithya.in") ||
     origin.endsWith("athithya-pi.vercel.app");
 
-  if (isAllowed) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  if (isAllowed && origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  } else if (!origin) {
+    // If no origin, likely same-site or direct call - allow Credentials
+    res.setHeader("Access-Control-Allow-Credentials", "true");
   }
 
-  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, DELETE, OPTIONS, PATCH"
