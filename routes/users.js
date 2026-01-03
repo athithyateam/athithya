@@ -68,7 +68,10 @@ userrouter.post("/signup/initiate", validateUser(signupSchema), async (req, res)
         })
     } catch (error) {
         console.error("Signup initiate error:", error)
-        return res.status(500).json({ success: false, message: "Error initiating signup" })
+        return res.status(500).json({
+            success: false,
+            message: "Error initiating signup - " + (error?.message || "Unknown error")
+        })
     }
 })
 
@@ -123,16 +126,21 @@ userrouter.post("/signup/complete", validateUser(otpCompleteSchema), async (req,
             token,
             isVerified: true,
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 firstname: user.firstname,
                 lastname: user.lastname,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                avatar: user.avatar || null,
+                description: user.description || ""
             }
         })
     } catch (error) {
         console.error("Signup complete error:", error)
-        return res.status(500).json({ success: false, message: "Error creating user" })
+        return res.status(500).json({
+            success: false,
+            message: "Error creating user - " + (error?.message || "Unknown error")
+        })
     }
 })
 
@@ -176,7 +184,10 @@ userrouter.post("/send-otp", async (req, res) => {
         return res.status(200).json({ success: true, message: "OTP sent successfully to your email" })
     } catch (error) {
         console.error("Send OTP error:", error)
-        return res.status(500).json({ success: false, message: "Error sending OTP" })
+        return res.status(500).json({
+            success: false,
+            message: "Error sending OTP - " + (error?.message || "Unknown error")
+        })
     }
 })
 
@@ -202,7 +213,10 @@ userrouter.post("/verify-otp", async (req, res) => {
         return res.status(200).json({ success: true, message: "OTP verified successfully" })
     } catch (error) {
         console.error("Verify OTP error:", error)
-        return res.status(500).json({ success: false, message: "Error verifying OTP" })
+        return res.status(500).json({
+            success: false,
+            message: "Error verifying OTP - " + (error?.message || "Unknown error")
+        })
     }
 })
 
@@ -252,16 +266,21 @@ userrouter.post("/signup", validateUser(signupSchema), async (req, res) => {
             token,
             isVerified: user.isVerified,
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 firstname: user.firstname,
                 lastname: user.lastname,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                avatar: user.avatar || null,
+                description: user.description || ""
             }
         })
     } catch (error) {
         console.error("Signup error:", error)
-        return res.status(500).json({ success: false, message: "Error creating user" })
+        return res.status(500).json({
+            success: false,
+            message: "Error creating user - " + (error?.message || "Unknown error")
+        })
     }
 })
 
@@ -305,16 +324,16 @@ userrouter.post("/signin", validateUser(signinSchema), async (req, res) => {
         })
     } catch (error) {
         console.error("DETAILED Signin error:", {
-            error: error.message,
-            stack: error.stack,
+            error: error?.message,
+            stack: error?.stack,
             email: email
         })
         return res.status(500).json({
             success: false,
-            message: "Error logging in - " + error.message,
-            error: error.message,
-            debugName: error.name,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            message: "Error logging in - " + (error?.message || "Unknown error"),
+            error: error?.message || "Internal Server Error",
+            debugName: error?.name,
+            stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
         })
     }
 })
@@ -446,8 +465,8 @@ userrouter.post("/google", async (req, res) => {
         console.error("Google signin error:", error);
         return res.status(500).json({
             success: false,
-            message: "Error with Google signin - " + error.message,
-            error: error.message
+            message: "Error with Google signin - " + (error?.message || "Unknown error"),
+            error: error?.message || "Internal Server Error"
         });
     }
 })
@@ -1036,12 +1055,14 @@ userrouter.get("/:id", checkAuth, async (req, res) => {
         return res.status(200).json({
             success: true,
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 firstname: user.firstname,
                 lastname: user.lastname,
                 email: user.email,
                 role: user.role,
                 isVerified: user.isVerified,
+                avatar: user.avatar || null,
+                description: user.description || "",
                 location: user.location,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt
@@ -1052,7 +1073,7 @@ userrouter.get("/:id", checkAuth, async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error fetching user",
-            error: error.message
+            error: error?.message || "Internal Server Error"
         })
     }
 })

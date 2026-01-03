@@ -5,7 +5,9 @@ const path = require("path");
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Path resolution for static files
 const _dirname = path.resolve();
+// We'll use __dirname where possible for CommonJS safety
 
 // Updated deployment - including user location routes
 
@@ -91,15 +93,17 @@ app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);
   res.status(500).json({
     success: false,
-    message: "Internal Server Error - " + err.message,
-    error: process.env.NODE_ENV === 'development' ? err : {}
+    message: "Internal Server Error - " + (err?.message || "Unknown error"),
+    error: process.env.NODE_ENV === 'development' ? (err?.stack || err) : {}
   });
 });
 
 // Start server
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Server is running on port ${port}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
 
 // Export for Vercel
 module.exports = app;
