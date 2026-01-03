@@ -31,11 +31,14 @@ app.use((req, res, next) => {
     origin.endsWith(".athithya.in") ||
     origin.endsWith("athithya-pi.vercel.app");
 
-  if (isAllowed) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  if (isAllowed && origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  } else if (!origin) {
+    // If no origin, it's likely a same-site request or a direct server-to-server call
+    // We don't need to set Access-Control-Allow-Origin here
   }
 
-  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, DELETE, OPTIONS, PATCH"
