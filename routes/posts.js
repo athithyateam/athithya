@@ -1180,10 +1180,7 @@ postRouter.get("/experiences/user/:userId", async (req, res) => {
 })
 
 // UPDATE EXPERIENCE - Only owner can update
-postRouter.put("/experiences/:id", checkAuth, upload.fields([
-    { name: "photos", maxCount: 10 },
-    { name: "videos", maxCount: 5 }
-]), handleMulterError, async (req, res) => {
+postRouter.put("/experiences/:id", checkAuth, async (req, res) => {
     try {
         const experience = await Post.findOne({
             _id: req.params.id,
@@ -1208,13 +1205,7 @@ postRouter.put("/experiences/:id", checkAuth, upload.fields([
         const {
             title, description, location, price, amenities,
             capacity, availability, categories, isFeatured, status,
-            difficulty, duration, privacyPolicy,
-            city, state, country, meetingPoint,  // individual location fields
-            pricePerPerson, period,              // individual price fields
-            maxPeople,                           // individual capacity
-            days, nights,                        // individual duration
-            existingPhotos: existingPhotosStr,
-            existingVideos: existingVideosStr
+            difficulty, duration, privacyPolicy
         } = req.body
 
         const parseIfJson = (value) => {
@@ -1228,128 +1219,18 @@ postRouter.put("/experiences/:id", checkAuth, upload.fields([
             return value
         }
 
-        // Parse JSON fields
-        const parsedLocation = parseIfJson(location)
-        const parsedPrice = parseIfJson(price)
-        const parsedCapacity = parseIfJson(capacity)
-        const parsedDuration = parseIfJson(duration)
-        const existingPhotos = parseIfJson(existingPhotosStr) || []
-        const existingVideos = parseIfJson(existingVideosStr) || []
-
-        // --- 1. Handle Photos/Videos Deletion from Cloudinary ---
-        const currentPhotoIds = existingPhotos.map(p => p.public_id).filter(id => id)
-        for (const photo of (experience.photos || [])) {
-            if (photo.public_id && !currentPhotoIds.includes(photo.public_id)) {
-                try {
-                    await cloudinary.uploader.destroy(photo.public_id)
-                } catch (err) {
-                    console.error("Cloudinary photo delete error during update:", err)
-                }
-            }
-        }
-
-        const currentVideoIds = existingVideos.map(v => v.public_id).filter(id => id)
-        for (const video of (experience.videos || [])) {
-            if (video.public_id && !currentVideoIds.includes(video.public_id)) {
-                try {
-                    await cloudinary.uploader.destroy(video.public_id, { resource_type: 'video' })
-                } catch (err) {
-                    console.error("Cloudinary video delete error during update:", err)
-                }
-            }
-        }
-
-        // --- 2. Upload New Files ---
-        const uploadToCloudinary = (file, resourceType) => {
-            return new Promise((resolve, reject) => {
-                cloudinary.uploader.upload_stream({ resource_type: resourceType }, (error, result) => {
-                    if (error) return reject(error);
-                    resolve(result);
-                }).end(file.buffer);
-            });
-        };
-
-        let newPhotos = []
-        if (req.files && req.files["photos"]) {
-            for (const file of req.files["photos"]) {
-                const result = await uploadToCloudinary(file, "image");
-                newPhotos.push({
-                    url: result.secure_url,
-                    public_id: result.public_id,
-                    resource_type: result.resource_type || 'image'
-                });
-            }
-        }
-
-        let newVideos = []
-        if (req.files && req.files["videos"]) {
-            for (const file of req.files["videos"]) {
-                const result = await uploadToCloudinary(file, "video");
-                newVideos.push({
-                    url: result.secure_url,
-                    public_id: result.public_id,
-                    resource_type: result.resource_type || 'video'
-                });
-            }
-        }
-
-        // --- 3. Update Fields ---
+        // Update fields
         if (title) experience.title = title
         if (description) experience.description = description
-
-        // Merge photos/videos
-        experience.photos = [...existingPhotos, ...newPhotos]
-        experience.videos = [...existingVideos, ...newVideos]
-
-        // Location Update
-        // Merge parsedLocation (if any) and individual fields into existing location
-        const locationUpdates = { ...(parsedLocation || {}) }
-        if (city) locationUpdates.city = city
-        if (state) locationUpdates.state = state
-        if (country) locationUpdates.country = country
-        if (meetingPoint) locationUpdates.meetingPoint = meetingPoint
-
-        // Check if we have new coordinates in parsedLocation, if not, preserve existing?
-        // Actually, if parsedLocation is provided, it likely contains coordinates from frontend if set.
-        // If parsedLocation.coordinates is missing but we have existing coordinates, we should keep them 
-        // unless explicitly cleared?
-        // Frontend sends coordinates ONLY if they are changed/set (it seems).
-        // Let's blindly merge: { ...experience.location, ...locationUpdates }
-        // BUT mongoose subdocs are tricky. We should fallback to empty obj if location undefined.
-        experience.location = { ...(experience.location || {}), ...locationUpdates }
-
-        // Security check for GeoJSON
-        if (experience.location.coordinates &&
-            (!experience.location.coordinates.type || experience.location.coordinates.type !== 'Point')) {
-            // invalid or partial coordinates, better to unset or ensure it's valid
-            // If coordinates is just {}, remove it
-            if (Object.keys(experience.location.coordinates).length === 0) {
-                delete experience.location.coordinates
-            }
-        }
-
-        // Price Update
-        const priceUpdates = { ...(parsedPrice || {}) }
-        if (pricePerPerson) priceUpdates.perPerson = Number(pricePerPerson)
-        if (period) priceUpdates.period = period
-        experience.price = { ...(experience.price || {}), ...priceUpdates }
-
-        // Capacity Update
-        const capacityUpdates = { ...(parsedCapacity || {}) }
-        if (maxPeople) capacityUpdates.maxPeople = Number(maxPeople)
-        experience.capacity = { ...(experience.capacity || {}), ...capacityUpdates }
-
-        // Duration Update
-        const durationUpdates = { ...(parsedDuration || {}) }
-        if (days) durationUpdates.days = Number(days)
-        if (nights) durationUpdates.nights = Number(nights)
-        experience.duration = { ...(experience.duration || {}), ...durationUpdates }
-
+        if (location) experience.location = { ...experience.location, ...parseIfJson(location) }
+        if (price) experience.price = { ...experience.price, ...parseIfJson(price) }
         if (amenities) experience.amenities = parseIfJson(amenities)
         if (privacyPolicy) experience.privacyPolicy = parseIfJson(privacyPolicy)
-        if (availability) experience.availability = { ...(experience.availability || {}), ...parseIfJson(availability) }
+        if (capacity) experience.capacity = { ...experience.capacity, ...parseIfJson(capacity) }
+        if (availability) experience.availability = { ...experience.availability, ...parseIfJson(availability) }
         if (categories) experience.categories = parseIfJson(categories)
         if (difficulty) experience.difficulty = difficulty
+        if (duration) experience.duration = parseIfJson(duration)
         if (status) experience.status = status
         if (isFeatured !== undefined) experience.isFeatured = isFeatured === 'true' || isFeatured === true
 
@@ -1364,8 +1245,7 @@ postRouter.put("/experiences/:id", checkAuth, upload.fields([
         console.error("Update experience error:", error)
         return res.status(500).json({
             success: false,
-            message: "Error updating experience",
-            error: error.message
+            message: "Error updating experience"
         })
     }
 })
