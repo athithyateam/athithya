@@ -1296,7 +1296,7 @@ postRouter.put("/experiences/:id", checkAuth, upload.fields([
         // --- 3. Update Fields ---
         if (title) experience.title = title
         if (description) experience.description = description
-        
+
         // Merge photos/videos
         experience.photos = [...existingPhotos, ...newPhotos]
         experience.videos = [...existingVideos, ...newVideos]
@@ -1308,7 +1308,7 @@ postRouter.put("/experiences/:id", checkAuth, upload.fields([
         if (state) locationUpdates.state = state
         if (country) locationUpdates.country = country
         if (meetingPoint) locationUpdates.meetingPoint = meetingPoint
-        
+
         // Check if we have new coordinates in parsedLocation, if not, preserve existing?
         // Actually, if parsedLocation is provided, it likely contains coordinates from frontend if set.
         // If parsedLocation.coordinates is missing but we have existing coordinates, we should keep them 
@@ -1319,13 +1319,145 @@ postRouter.put("/experiences/:id", checkAuth, upload.fields([
         experience.location = { ...(experience.location || {}), ...locationUpdates }
 
         // Security check for GeoJSON
-        if (experience.location.coordinates && 
+        if (experience.location.coordinates &&
             (!experience.location.coordinates.type || experience.location.coordinates.type !== 'Point')) {
-             // invalid or partial coordinates, better to unset or ensure it's valid
-             // If coordinates is just {}, remove it
-             if (Object.keys(experience.location.coordinates).length === 0) {
-                 delete experience.location.coordinates
-             }
+            // invalid or partial coordinates, better to unset or ensure it's valid
+            // If coordinates is just {}, remove it
+            if (Object.keys(experience.location.coordinates).length === 0) {
+                delete experience.location.coordinates
+            }
+        }
+
+        // Price Update
+        const priceUpdates = { ...(parsedPrice || {}) }
+        if (pricePerPerson) priceUpdates.perPerson = Number(pricePerPerson)
+        if (period) priceUpdates.period = period
+        experience.price = { ...(experience.price || {}), ...priceUpdates }
+
+        // Capacity Update
+        const capacityUpdates = { ...(parsedCapacity || {}) }
+        if (maxPeople) capacityUpdates.maxPeople = Number(maxPeople)
+        experience.capacity = { ...(experience.capacity || {}), ...capacityUpdates }
+
+        // Duration Update
+        const durationUpdates = { ...(parsedDuration || {}) }
+        if (days) durationUpdates.days = Number(days)
+        if (nights) durationUpdates.nights = Number(nights)
+        experience.duration = { ...(experience.duration || {}), ...durationUpdates }
+
+        if (amenities) experience.amenities = parseIfJson(amenities)
+        if (privacyPolicy) experience.privacyPolicy = parseIfJson(privacyPolicy)
+        if (availability) experience.availability = { ...(experience.availability || {}), ...parseIfJson(availability) }
+        if (categories) experience.categories = parseIfJson(categories)
+        if (difficulty) experience.difficulty = difficulty
+        if (status) experience.status = status
+        if (isFeatured !== undefined) experience.isFeatured = isFeatured === 'true' || isFeatured === true
+
+        await experience.save()
+
+
+        const {
+            title, description, location, price, amenities,
+            capacity, availability, categories, isFeatured, status,
+            difficulty, duration, privacyPolicy,
+            city, state, country, meetingPoint,  // individual location fields
+            pricePerPerson, period,              // individual price fields
+            maxPeople,                           // individual capacity
+            days, nights,                        // individual duration
+            existingPhotos: existingPhotosStr,
+            existingVideos: existingVideosStr
+        } = req.body
+
+        const parseIfJson = (value) => {
+            if (!value) return undefined
+            if (typeof value === 'object') return value
+            try {
+                if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
+                    return JSON.parse(value)
+                }
+            } catch (e) { }
+            return value
+        }
+
+        // Parse JSON fields
+        const parsedLocation = parseIfJson(location)
+        const parsedPrice = parseIfJson(price)
+        const parsedCapacity = parseIfJson(capacity)
+        const parsedDuration = parseIfJson(duration)
+        const existingPhotos = parseIfJson(existingPhotosStr) || []
+        const existingVideos = parseIfJson(existingVideosStr) || []
+
+        // Handle existing photos (cleanup removed ones)
+        const currentPhotoIds = existingPhotos.map(p => p.public_id).filter(id => id)
+        for (const photo of (experience.photos || [])) {
+            if (photo.public_id && !currentPhotoIds.includes(photo.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(photo.public_id)
+                } catch (err) { }
+            }
+        }
+
+        const currentVideoIds = existingVideos.map(v => v.public_id).filter(id => id)
+        for (const video of (experience.videos || [])) {
+            if (video.public_id && !currentVideoIds.includes(video.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(video.public_id, { resource_type: 'video' })
+                } catch (err) { }
+            }
+        }
+
+        // Upload New Fields
+        const uploadToCloudinary = (file, resourceType) => {
+            return new Promise((resolve, reject) => {
+                cloudinary.uploader.upload_stream({ resource_type: resourceType }, (error, result) => {
+                    if (error) return reject(error);
+                    resolve(result);
+                }).end(file.buffer);
+            });
+        };
+
+        let newPhotos = []
+        if (req.files && req.files["photos"]) {
+            for (const file of req.files["photos"]) {
+                const result = await uploadToCloudinary(file, "image");
+                newPhotos.push({
+                    url: result.secure_url,
+                    public_id: result.public_id,
+                    resource_type: result.resource_type || 'image'
+                });
+            }
+        }
+
+        let newVideos = []
+        if (req.files && req.files["videos"]) {
+            for (const file of req.files["videos"]) {
+                const result = await uploadToCloudinary(file, "video");
+                newVideos.push({
+                    url: result.secure_url,
+                    public_id: result.public_id,
+                    resource_type: result.resource_type || 'video'
+                });
+            }
+        }
+
+        // Update fields
+        if (title) experience.title = title
+        if (description) experience.description = description
+
+        experience.photos = [...existingPhotos, ...newPhotos]
+        experience.videos = [...existingVideos, ...newVideos]
+
+        // Location Update
+        const locationUpdates = { ...(parsedLocation || {}) }
+        if (city) locationUpdates.city = city
+        if (state) locationUpdates.state = state
+        if (country) locationUpdates.country = country
+        if (meetingPoint) locationUpdates.meetingPoint = meetingPoint
+        experience.location = { ...(experience.location || {}), ...locationUpdates }
+
+        if (experience.location.coordinates &&
+            Object.keys(experience.location.coordinates).length === 0) {
+            delete experience.location.coordinates
         }
 
         // Price Update
@@ -1357,14 +1489,14 @@ postRouter.put("/experiences/:id", checkAuth, upload.fields([
 
         return res.status(200).json({
             success: true,
-            message: "Experience updated successfully",
+            message: "Momento updated successfully",
             experience
         })
     } catch (error) {
-        console.error("Update experience error:", error)
+        console.error("Update momento error:", error)
         return res.status(500).json({
             success: false,
-            message: "Error updating experience",
+            message: "Error updating Momento",
             error: error.message
         })
     }
@@ -1773,7 +1905,12 @@ postRouter.put("/services/:id", checkAuth, upload.fields([
             title, description, location, price, amenities,
             capacity, availability, categories, isFeatured, status,
             difficulty, duration, privacyPolicy,
-            existingPhotos: existingPhotosStr
+            city, state, country, meetingPoint,
+            pricePerPerson, priceTotal, period,
+            maxPeople,
+            days, nights,
+            existingPhotos: existingPhotosStr,
+            existingVideos: existingVideosStr
         } = req.body
 
         const parseIfJson = (value) => {
@@ -1787,15 +1924,29 @@ postRouter.put("/services/:id", checkAuth, upload.fields([
             return value
         }
 
-        // Handle existing photos
+        // Parse JSON fields
+        const parsedLocation = parseIfJson(location)
+        const parsedPrice = parseIfJson(price)
+        const parsedCapacity = parseIfJson(capacity)
+        const parsedDuration = parseIfJson(duration)
         const existingPhotos = parseIfJson(existingPhotosStr) || []
+        const existingVideos = parseIfJson(existingVideosStr) || []
 
-        // Cloudinary cleanup for removed photos
+        // Handle existing photos (cleanup removed)
         const currentPhotoIds = existingPhotos.map(p => p.public_id).filter(id => id)
         for (const photo of (service.photos || [])) {
             if (photo.public_id && !currentPhotoIds.includes(photo.public_id)) {
                 try {
                     await cloudinary.uploader.destroy(photo.public_id)
+                } catch (err) { }
+            }
+        }
+
+        const currentVideoIds = existingVideos.map(v => v.public_id).filter(id => id)
+        for (const video of (service.videos || [])) {
+            if (video.public_id && !currentVideoIds.includes(video.public_id)) {
+                try {
+                    await cloudinary.uploader.destroy(video.public_id, { resource_type: 'video' })
                 } catch (err) { }
             }
         }
@@ -1818,22 +1969,59 @@ postRouter.put("/services/:id", checkAuth, upload.fields([
             }
         }
 
+        let newVideos = []
+        if (req.files && req.files["videos"]) {
+            for (const file of req.files["videos"]) {
+                const result = await uploadToCloudinary(file, "video");
+                newVideos.push({ url: result.secure_url, public_id: result.public_id, resource_type: result.resource_type || 'video' });
+            }
+        }
+
         // Update fields
         if (title) service.title = title
         if (description) service.description = description
-        if (location) service.location = { ...service.location, ...parseIfJson(location) }
-        if (price) service.price = { ...service.price, ...parseIfJson(price) }
-        if (amenities) service.amenities = parseIfJson(amenities)
-        if (privacyPolicy) service.privacyPolicy = parseIfJson(privacyPolicy)
-        if (capacity) service.capacity = { ...service.capacity, ...parseIfJson(capacity) }
-        if (availability) service.availability = { ...service.availability, ...parseIfJson(availability) }
-        if (categories) service.categories = parseIfJson(categories)
-        if (difficulty) service.difficulty = difficulty
-        if (duration) service.duration = parseIfJson(duration)
-        if (status) service.status = status
-        if (isFeatured !== undefined) service.isFeatured = isFeatured === 'true' || isFeatured === true
 
         service.photos = [...existingPhotos, ...newPhotos]
+        service.videos = [...existingVideos, ...newVideos]
+
+        // Location Update
+        const locationUpdates = { ...(parsedLocation || {}) }
+        if (city) locationUpdates.city = city
+        if (state) locationUpdates.state = state
+        if (country) locationUpdates.country = country
+        if (meetingPoint) locationUpdates.meetingPoint = meetingPoint
+        service.location = { ...(service.location || {}), ...locationUpdates }
+
+        if (service.location.coordinates &&
+            Object.keys(service.location.coordinates).length === 0) {
+            delete service.location.coordinates
+        }
+
+        // Price Update
+        const priceUpdates = { ...(parsedPrice || {}) }
+        if (pricePerPerson) priceUpdates.perPerson = Number(pricePerPerson)
+        if (priceTotal) priceUpdates.total = Number(priceTotal)
+        if (period) priceUpdates.period = period
+        service.price = { ...(service.price || {}), ...priceUpdates }
+
+        // Capacity Update
+        const capacityUpdates = { ...(parsedCapacity || {}) }
+        if (maxPeople) capacityUpdates.maxPeople = Number(maxPeople)
+        service.capacity = { ...(service.capacity || {}), ...capacityUpdates }
+
+        // Duration Update
+        const durationUpdates = { ...(parsedDuration || {}) }
+        if (days) durationUpdates.days = Number(days)
+        if (nights) durationUpdates.nights = Number(nights)
+        service.duration = { ...(service.duration || {}), ...durationUpdates }
+
+        if (amenities) service.amenities = parseIfJson(amenities)
+        if (privacyPolicy) service.privacyPolicy = parseIfJson(privacyPolicy)
+        if (availability) service.availability = { ...(service.availability || {}), ...parseIfJson(availability) }
+        if (categories) service.categories = parseIfJson(categories)
+        if (difficulty) service.difficulty = difficulty
+        if (status) service.status = status
+        if (isFeatured !== undefined) service.isFeatured = isFeatured === 'true' || isFeatured === true
 
         await service.save()
 
@@ -1846,7 +2034,8 @@ postRouter.put("/services/:id", checkAuth, upload.fields([
         console.error("Update service error:", error)
         return res.status(500).json({
             success: false,
-            message: "Error updating service"
+            message: "Error updating service",
+            error: error.message
         })
     }
 })
