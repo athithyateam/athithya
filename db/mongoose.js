@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const MONGO_URL = process.env.MONGO_URL;
 
@@ -6,15 +6,49 @@ if (!MONGO_URL) {
     console.error("❌ ERROR: MONGO_URL is not defined in environment variables!");
 }
 
-if (MONGO_URL) {
-    mongoose.connect(MONGO_URL, {
-        serverSelectionTimeoutMS: 5000, // Reduced to 5s for Vercel
-        socketTimeoutMS: 45000,
-    })
-        .then(() => { console.log("✅ Connected to MongoDB") })
-        .catch((error) => {
-            console.error("❌ MongoDB connection error:", error.message);
+/**
+ * Global is used here to maintain a cached connection across hot reloads
+ * in development and serverless function invocations in production.
+ * This prevents creating multiple connections.
+ */
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDB() {
+    if (cached.conn) {
+        return cached.conn;
+    }
+
+    if (!cached.promise) {
+        const opts = {
+            bufferCommands: false, // If not connected, throw error immediately instead of buffering
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        };
+
+        if (!MONGO_URL) {
+            console.error("❌ Cannot connect: MONGO_URL is missing");
+            return;
+        }
+
+        cached.promise = mongoose.connect(MONGO_URL, opts).then((mongoose) => {
+            console.log("✅ Connected to MongoDB");
+            return mongoose;
         });
+    }
+
+    try {
+        cached.conn = await cached.promise;
+    } catch (e) {
+        cached.promise = null;
+        console.error("❌ MongoDB connection error:", e.message);
+        throw e;
+    }
+
+    return cached.conn;
 }
 
 const userSchema = new mongoose.Schema({
@@ -207,4 +241,4 @@ const Post = mongoose.model("post", postSchema)
 const Review = mongoose.model("review", reviewSchema)
 const Notification = mongoose.model("notification", notificationSchema)
 
-module.exports = { User, OTP, Post, Review, Notification }
+module.exports = { connectDB, User, OTP, Post, Review, Notification }

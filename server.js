@@ -61,7 +61,23 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // 3. DATABASE CONNECTION
-require("./db/mongoose");
+// 3. DATABASE CONNECTION
+const { connectDB } = require("./db/mongoose");
+
+// Middleware to ensure DB is connected for all API routes
+// This prevents "buffering timed out" errors in Vercel Serverless functions
+app.use(async (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    try {
+      await connectDB();
+    } catch (error) {
+      console.error("DB Connection Middleware Error:", error);
+      // Don't block here, let the actual route handler fail if needed, 
+      // but usually this catches the issue early.
+    }
+  }
+  next();
+});
 
 // 4. ROUTES
 const userRoutes = require("./routes/users");
