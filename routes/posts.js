@@ -41,7 +41,7 @@ postRouter.post("/", checkAuth, upload.fields([
     console.log('req.files:', req.files);
     try {
         const {
-            postType, title, description, location,
+            postType, title, subtitle, description, location,
             price, amenities, capacity, availability,
             planName, priceTotal, pricePerPerson, maxPeople,
             duration, difficulty, categories, isFeatured
@@ -158,6 +158,7 @@ postRouter.post("/", checkAuth, upload.fields([
             userRole: req.user.role,
             postType,
             title,
+            subtitle,
             description,
             photos: photoUrls,
             videos: videoUrls,
@@ -1650,7 +1651,7 @@ postRouter.put("/services/:id", checkAuth, upload.fields([
         }
 
         const {
-            title, description, location, price, amenities,
+            title, subtitle, description, location, price, amenities,
             capacity, availability, categories, isFeatured, status,
             difficulty, duration, privacyPolicy,
             existingPhotos: existingPhotosStr
@@ -1700,6 +1701,7 @@ postRouter.put("/services/:id", checkAuth, upload.fields([
 
         // Update fields
         if (title) service.title = title
+        if (subtitle) service.subtitle = subtitle
         if (description) service.description = description
         if (location) service.location = { ...service.location, ...parseIfJson(location) }
         if (price) service.price = { ...service.price, ...parseIfJson(price) }
@@ -1803,7 +1805,7 @@ postRouter.post("/treks", checkAuth, upload.fields([
         }
 
         const {
-            title, description, location,
+            title, subtitle, description, location,
             pricePerPerson, maxPeople,
             duration, difficulty, categories, isFeatured,
             amenities, availability
@@ -1882,6 +1884,7 @@ postRouter.post("/treks", checkAuth, upload.fields([
             userRole: req.user.role,
             postType: 'trek',
             title,
+            subtitle,
             description,
             photos: photoUrls,
             videos: videoUrls,
@@ -2035,7 +2038,7 @@ postRouter.put("/treks/:id", checkAuth, async (req, res) => {
         }
 
         const {
-            title, description, location,
+            title, subtitle, description, location,
             pricePerPerson, maxPeople,
             duration, difficulty, categories, isFeatured,
             amenities, availability, status
@@ -2054,6 +2057,7 @@ postRouter.put("/treks/:id", checkAuth, async (req, res) => {
 
         // Update fields
         if (title) trek.title = title
+        if (subtitle) trek.subtitle = subtitle
         if (description) trek.description = description
         if (location) trek.location = { ...trek.location, ...parseIfJson(location) }
 

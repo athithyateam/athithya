@@ -111,6 +111,11 @@ const postSchema = new mongoose.Schema({
         trim: true,
         maxlength: 200
     },
+    subtitle: {
+        type: String,
+        trim: true,
+        maxlength: 200
+    },
     description: {
         type: String,
         required: true,

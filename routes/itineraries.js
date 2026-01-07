@@ -43,6 +43,7 @@ itineraryRouter.post("/", checkAuth, upload.fields([
     try {
         // Ensure req.body exists and has required fields
         const title = req.body?.title;
+        const subtitle = req.body?.subtitle;
         const description = req.body?.description;
         const location = req.body?.location;
         const price = req.body?.price;
@@ -135,6 +136,7 @@ itineraryRouter.post("/", checkAuth, upload.fields([
             userRole: req.user.role,
             postType: 'plan',
             title,
+            subtitle,
             description,
             location: parsedLocation || {},
             plan: planName ? { name: planName } : undefined,
@@ -304,7 +306,7 @@ itineraryRouter.put("/:id", checkAuth, upload.fields([
         }
 
         const {
-            title, description, location,
+            title, subtitle, description, location,
             planName, priceTotal, pricePerPerson, maxPeople,
             duration, difficulty, tags, status, categories, availability,
             existingPhotos: existingPhotosStr,
@@ -385,6 +387,7 @@ itineraryRouter.put("/:id", checkAuth, upload.fields([
 
         // Update fields
         if (title) itinerary.title = title
+        if (subtitle) itinerary.subtitle = subtitle
         if (description) itinerary.description = description
 
         itinerary.photos = [...existingPhotos, ...newPhotos]
