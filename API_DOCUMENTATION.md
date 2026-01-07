@@ -2,7 +2,7 @@
 
 ## Featured Treks & Experiences API
 
-This API allows hosts to create, manage, and showcase featured treks and experiences similar to the interface shown.
+This API allows hosts to create, manage, and showcase featured treks and experiences.
 
 ---
 

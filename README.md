@@ -1,400 +1,106 @@
-# Athithya Backend API
+# Athithya - Himalayan Travel & Trekking Backend
 
-A comprehensive travel and trekking platform API built with Node.js, Express, MongoDB, and JWT.
-
-## Features
-
-### 🔐 Authentication
-- ✅ User Registration with OTP Verification
-- ✅ User Login (Signin)
-- ✅ Password Hashing with bcrypt
-- ✅ JWT Token Authentication
-- ✅ Role-based Access (Guest, Host, Admin)
-
-### 🏔️ Posts & Experiences
-- ✅ Create Treks, Services, and Experiences
-- ✅ Featured Content Management
-- ✅ Top-Rated Treks with Reviews
-- ✅ Nearby Trek Discovery (Geospatial)
-- ✅ Photo & Video Upload (Cloudinary)
-
-### 👥 User Management
-- ✅ User Profiles
-- ✅ Host Rating System
-- ✅ Top-Rated Hosts
-- ✅ Location-based User Discovery
-
-### ⭐ Reviews & Ratings
-- ✅ Review Hosts and Treks
-- ✅ Rating Aggregation
-- ✅ Review Management
-
-### 🛠️ Technical
-- ✅ Input Validation with Zod
-- ✅ CORS Enabled
-- ✅ MongoDB with Mongoose
-- ✅ Cloudinary Integration
-- ✅ Email Service (OTP)
-
-## Quick Links
-
-📚 **Detailed API Documentation:**
-- [Complete API Documentation](API_DOCUMENTATION.md)
-- [Experiences API](EXPERIENCES_API_DOCUMENTATION.md)
-- [Services API](SERVICES_API_DOCUMENTATION.md)
-- [Top-Rated Treks API](TOP_RATED_TREKS_API_DOCUMENTATION.md)
-- [Top-Rated Hosts API](TOP_RATED_HOSTS_API_DOCUMENTATION.md)
-- [Nearby Treks API](NEARBY_TREKS_API_DOCUMENTATION.md)
-- [Reviews API](REVIEWS_API_DOCUMENTATION.md)
-- [User Profile API](USER_PROFILE_API_DOCUMENTATION.md)
-
-## API Endpoints Overview
-
-### Base URL
-```
-http://localhost:3000
-```
-
-### 🔐 Authentication (`/api/auth`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/signup/initiate` | Send OTP for signup | No |
-| POST | `/signup/complete` | Complete signup with OTP | No |
-| POST | `/signin` | User login | No |
-| POST | `/send-otp` | Send OTP to email | No |
-| POST | `/verify-otp` | Verify OTP | No |
-
-### 📝 Posts (`/api/posts`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/` | Create post (trek/service/experience) | Yes |
-| GET | `/` | Get all posts with filters | No |
-| GET | `/:id` | Get single post by ID | No |
-| PUT | `/:id` | Update post | Yes (Owner) |
-| DELETE | `/:id` | Delete post | Yes (Owner) |
-
-### 🏔️ Experiences (`/api/posts/experiences`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/experiences` | Create experience | Yes |
-| GET | `/experiences` | Get all experiences | No |
-| GET | `/experiences/:id` | Get single experience | No |
-| GET | `/experiences/featured/list` | Get featured experiences | No |
-| GET | `/experiences/my/list` | Get my experiences | Yes |
-| GET | `/experiences/user/:userId` | Get user's experiences | No |
-| PUT | `/experiences/:id` | Update experience | Yes (Owner) |
-| DELETE | `/experiences/:id` | Delete experience | Yes (Owner) |
-
-### 🛎️ Services (`/api/posts/services`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/services` | Create service | Yes (Host) |
-| GET | `/services` | Get all services | No |
-| GET | `/services/:id` | Get single service | No |
-| GET | `/services/featured/list` | Get featured services | No |
-| GET | `/services/my/list` | Get my services | Yes (Host) |
-| GET | `/services/host/:userId` | Get host's services | No |
-| PUT | `/services/:id` | Update service | Yes (Host/Owner) |
-| DELETE | `/services/:id` | Delete service | Yes (Host/Owner) |
-
-### ⛰️ Treks (`/api/posts`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/featured/treks` | Get featured treks | No |
-| GET | `/top-rated/treks` | Get top-rated treks | No |
-| GET | `/nearby/treks` | Find nearby treks (GPS) | No |
-
-### 👤 Users (`/api/users`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/profile/:userId` | Get user profile | No |
-| GET | `/top-rated/hosts` | Get top-rated hosts | No |
-| PUT | `/location` | Update user location | Yes |
-| GET | `/location` | Get user location | Yes |
-
-### ⭐ Reviews (`/api/reviews`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/` | Create review | Yes |
-| GET | `/host/:hostId` | Get reviews for host | No |
-| GET | `/my/reviews` | Get my reviews | Yes |
-| GET | `/received` | Get reviews received (Host) | Yes (Host) |
-| PUT | `/:reviewId` | Update review | Yes (Owner) |
-| DELETE | `/:reviewId` | Delete review | Yes (Owner) |
-
-### 🗺️ Itineraries (`/api/itineraries`)
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/` | Create itinerary | Yes |
-| GET | `/` | Get all itineraries | No |
-| GET | `/:id` | Get single itinerary | No |
-| PUT | `/:id` | Update itinerary | Yes (Owner) |
-| DELETE | `/:id` | Delete itinerary | Yes (Owner) |
-
-### 🏥 Health Check
-```
-GET /health
-```
-Response:
-```json
-{
-  "status": "ok",
-  "message": "Server is running"
-}
-```
+Athithya is a specialized backend platform designed to power premium travel and trekking experiences, with a focus on the Himalayan region. It connects adventure seekers (Guests) with local experts and certified guides (Hosts), fostering authentic community-driven tourism in Uttarakhand.
 
 ---
 
-## 🚀 Setup Instructions
+## Technical Overview
 
-### 1. Install Dependencies
-```bash
-npm install
-```
+Built with a modern Node.js stack, the API handles identity management, geospatial trek discovery, community interactions, and automated media processing.
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root directory:
-```env
-MONGO_URL=mongodb://localhost:27017/athithya
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-PORT=3000
-
-# Cloudinary Configuration (for image/video uploads)
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
-# Email Configuration (for OTP)
-EMAIL_SERVICE=gmail
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-password
-```
-
-### 3. Start MongoDB
-Make sure MongoDB is running on your system:
-```bash
-# Windows
-net start MongoDB
-
-# macOS/Linux
-sudo systemctl start mongod
-```
-
-### 4. Run the Server
-```bash
-npm start
-```
-
-For development with auto-reload:
-```bash
-npm run dev
-```
-
-Server will start on: `http://localhost:3000`
+### Key Capabilities
+- **Identity & Trust**: Role-role based access control (Guest, Host, Admin) with OTP-verified registration and Google OAuth.
+- **Geospatial Discovery**: Advanced MongoDB geospatial queries to find treks and services based on real-time location.
+- **Media Engine**: Seamless integration with Cloudinary for handling high-resolution trekking photos and videos.
+- **Community Layer**: Comprehensive review system for hosts and experiences, plus real-time notifications.
+- **Content Management**: Priority featured content discovery and search filtering.
 
 ---
 
-## 📖 Example Usage
+## Documentation Index
 
-### Create an Experience
-```javascript
-const formData = new FormData();
-formData.append("title", "Kedarkantha Winter Trek");
-formData.append("description", "Amazing winter trek experience...");
-formData.append("city", "Sankri");
-formData.append("state", "Uttarakhand");
-formData.append("pricePerPerson", "18000");
-formData.append("days", "6");
-formData.append("nights", "5");
-formData.append("difficulty", "Moderate");
-formData.append("categories", JSON.stringify(["Adventure", "Mountain", "Snow"]));
-formData.append("photos", photoFile);
-
-const response = await fetch("http://localhost:3000/api/posts/experiences", {
-  method: "POST",
-  headers: {
-    "Authorization": `Bearer ${token}`
-  },
-  body: formData
-});
-```
-
-### Get Top-Rated Hosts
-```javascript
-const response = await fetch(
-  "http://localhost:3000/api/users/top-rated/hosts?limit=10&minRating=4.5"
-);
-const data = await response.json();
-console.log(data.hosts);
-```
-
-### Find Nearby Treks
-```javascript
-const response = await fetch(
-  "http://localhost:3000/api/posts/nearby/treks?latitude=30.3165&longitude=78.0322&maxDistance=50000"
-);
-const data = await response.json();
-console.log(data.treks);
-```
+Detailed guides for specific modules:
+- [🚀 Quick Start Guide](QUICK_START.md) - Get up and running in minutes.
+- [📚 Main API Documentation](API_DOCUMENTATION.md) - Core endpoints for posts and auth.
+- [🏔️ Experiences & Treks API](EXPERIENCES_API_DOCUMENTATION.md) - Deep dive into trekking posts.
+- [👤 Service Providers API](SERVICES_API_DOCUMENTATION.md) - Managing local services.
+- [⭐ Reviews & Ratings](REVIEWS_API_DOCUMENTATION.md) - Trust and safety protocols.
+- [🗺️ Itinerary Management](ITINERARY_API_DOCUMENTATION.md) - Planning and scheduling.
+- [📍 Location & Geospatial](LOCATION_API_DOCUMENTATION.md) - How mapping works.
 
 ---
 
-## 🔒 Authentication Flow
+## 🛠️ Environment Setup
 
-1. **Initiate Signup**: User provides details and receives OTP via email
-2. **Complete Signup**: User enters OTP to create verified account
-3. **Signin**: User logs in with email and password
-4. **Access Protected Routes**: Use JWT token in Authorization header
+### Prerequisites
+- Node.js v18+
+- MongoDB instance (local or Atlas)
+- Cloudinary Account (for media)
+- SMTP/Email provider (for OTP)
 
-```javascript
-// Example authentication flow
-// 1. Initiate signup
-await fetch("/api/auth/signup/initiate", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    firstname: "John",
-    lastname: "Doe",
-    email: "john@example.com",
-    password: "secure123",
-    role: "guest"
-  })
-});
+### Installation
 
-// 2. Complete signup with OTP
-const signupRes = await fetch("/api/auth/signup/complete", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    firstname: "John",
-    lastname: "Doe",
-    email: "john@example.com",
-    password: "secure123",
-    role: "guest",
-    otp: "123456"
-  })
-});
+1. **Clone & Install**
+   ```bash
+   npm install
+   ```
 
-const { token } = await signupRes.json();
+2. **Configure Environment**
+   Create a `.env` file in the root:
+   ```env
+   # Core
+   MONGO_URL=your_mongodb_uri
+   JWT_SECRET=your_secure_random_string
+   PORT=3000
 
-// 3. Use token for authenticated requests
-await fetch("/api/posts/experiences/my/list", {
-  headers: {
-    "Authorization": `Bearer ${token}`
-  }
-});
-```
+   # Frontend URL for CORS
+   FRONTEND_URL=http://localhost:5173
 
----
+   # Media (Cloudinary)
+   CLOUDINARY_CLOUD_NAME=name
+   CLOUDINARY_API_KEY=key
+   CLOUDINARY_API_SECRET=secret
 
-## 🎯 User Roles
+   # Email (Nodemailer)
+   EMAIL_SERVICE=gmail
+   EMAIL_USER=your_email
+   EMAIL_PASSWORD=app_password
+   ```
 
-### Guest
-- Create experiences
-- Post reviews
-- View all public content
-- Manage own posts
+3. **Run Services**
+   ```bash
+   # Development (with nodemon)
+   npm run dev
 
-### Host
-- All guest permissions
-- Create services and treks
-- Receive reviews
-- Featured content eligibility
-
-### Admin
-- Full access to all features
-- User management
-- Content moderation
-- Analytics access
+   # Production
+   npm start
+   ```
 
 ---
 
-## ✨ Key Features Explained
+## 🏗️ Architecture
 
-### 🌟 Featured Content
-Posts can be marked as featured (`isFeatured: true`) to appear in priority listings.
-
-### ⭐ Rating System
-- Users can review hosts (1-5 stars)
-- Automatic average rating calculation
-- Top-rated treks and hosts endpoints
-
-### 📍 Location Services
-- Store user location with coordinates
-- Find nearby treks using geospatial queries
-- Filter by city, state, or country
-
-### 📸 Media Management
-- Upload up to 10 photos per post
-- Upload up to 5 videos per post
-- Automatic Cloudinary integration
-- Media cleanup on post deletion
+The project follows a modular route-middleware-model pattern:
+- `/routes`: Endpoint definitions and controller logic.
+- `/middleware`: Auth guards, role checks, and request validation.
+- `/db`: Mongoose schemas and database connection pooling.
+- `/utils`: Shared helpers (Cloudinary, Email, etc.).
+- `/jwt`: Token signing and verification logic.
 
 ---
 
-## 📋 Validation Rules
+## Core API Endpoints
 
-### Signup
-- `firstname`: Required, minimum 1 character
-- `lastname`: Required, minimum 1 character
-- `email`: Required, must be valid email format
-- `password`: Required, minimum 6 characters
+| Resource | Path | Description |
+|----------|------|-------------|
+| **Auth** | `/api/auth` | Login, Register, OTP, Password Reset |
+| **Posts** | `/api/posts` | Treks, Services, and Experiences |
+| **Users** | `/api/users` | Profile management and Host discovery |
+| **Reviews** | `/api/reviews` | Rating and feedback system |
+| **Itinerary** | `/api/itineraries` | Trip planning and day-by-day guides |
+| **Notice** | `/api/notifications` | User activity alerts |
 
-### Signin
-- `email`: Required, must be valid email format
-- `password`: Required
-
-## Error Responses
-
-### 400 Bad Request
-```json
-{
-  "message": "User already exists"
-}
-```
-or
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "errors": [...]
-}
-```
-
-### 404 Not Found
-```json
-{
-  "message": "Route not found"
-}
-```
-
-### 500 Internal Server Error
-```json
-{
-  "message": "Error creating user"
-}
-```
-
-## Security Features
-
-- Passwords are hashed using bcrypt with 10 salt rounds
-- JWT tokens expire after 1 hour
-- Email addresses are stored in lowercase and trimmed
-- CORS enabled for cross-origin requests
-- Input validation on all endpoints
-
-## Technologies Used
-
-- **Node.js** - Runtime environment
-- **Express** - Web framework
-- **MongoDB** - Database
-- **Mongoose** - ODM for MongoDB
-- **bcrypt** - Password hashing
-- **jsonwebtoken** - JWT authentication
-- **Zod** - Schema validation
-- **CORS** - Cross-origin resource sharing
-- **dotenv** - Environment variable management
+---
 
 ## License
-
-ISC
+Developed for the Athithya Team. All rights reserved. 🏔️

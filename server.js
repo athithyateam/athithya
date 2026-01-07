@@ -4,10 +4,9 @@ const path = require("path");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Path resolution for static files
+// Middleware & Configurations
 const _dirname = path.resolve();
 
-// Allowed Origins for CORS
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
@@ -20,11 +19,10 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean).map(o => o.replace(/\/$/, ""));
 
-// 1. MANUAL CORS & PREFLIGHT - MUST BE FIRST
+// CORS Policy
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // Robust origin check
   const isAllowed =
     !origin ||
     allowedOrigins.includes(origin) ||
@@ -35,7 +33,6 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
   } else if (!origin) {
-    // If no origin, likely same-site or direct call - allow Credentials
     res.setHeader("Access-Control-Allow-Credentials", "true");
   }
 
@@ -48,7 +45,6 @@ app.use((req, res, next) => {
     "Content-Type, Authorization, X-Requested-With, Accept, Origin"
   );
 
-  // Handle preflight
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -56,30 +52,26 @@ app.use((req, res, next) => {
   next();
 });
 
-// 2. PARSING MIDDLEWARE
+// Parsers
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// 3. DATABASE CONNECTION
-// 3. DATABASE CONNECTION
+// Database
 const { connectDB } = require("./db/mongoose");
 
-// Middleware to ensure DB is connected for all API routes
-// This prevents "buffering timed out" errors in Vercel Serverless functions
+// Ensure DB connection for API routes
 app.use(async (req, res, next) => {
   if (req.path.startsWith('/api')) {
     try {
       await connectDB();
     } catch (error) {
       console.error("DB Connection Middleware Error:", error);
-      // Don't block here, let the actual route handler fail if needed, 
-      // but usually this catches the issue early.
     }
   }
   next();
 });
 
-// 4. ROUTES
+// Routes
 const userRoutes = require("./routes/users");
 const postRoutes = require("./routes/posts");
 const reviewRoutes = require("./routes/reviews");
@@ -92,20 +84,17 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/itineraries", itineraryRoutes);
 app.use("/api/notifications", require("./routes/notifications"));
 
-// Health check
 app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "Server is running" });
 });
 
-// 5. STATIC FILES
+// Static Files & SPA Fallback
 app.use(express.static(path.join(_dirname, "At-front", "dist")));
 
-// 6. API 404
 app.use("/api", (req, res) => {
   res.status(404).json({ message: "API route not found" });
 });
 
-// 7. SPA FALLBACK
 app.get(/.*/, (req, res) => {
   const indexPath = path.resolve(_dirname, "At-front", "dist", "index.html");
   res.sendFile(indexPath, (err) => {
@@ -121,7 +110,7 @@ app.get(/.*/, (req, res) => {
   });
 });
 
-// 8. GLOBAL ERROR HANDLER
+// Error Handling
 app.use((err, req, res, next) => {
   console.error("UNHANDLED ERROR:", err);
   if (!res.headersSent) {
@@ -133,12 +122,11 @@ app.use((err, req, res, next) => {
   }
 });
 
-// 9. START SERVER
+// Server Init
 if (process.env.NODE_ENV !== "production") {
   app.listen(port, "0.0.0.0", () => {
     console.log(`Server is running on port ${port}`);
   });
 }
 
-// 10. EXPORT FOR VERCEL
 module.exports = app;
