@@ -732,6 +732,15 @@ postRouter.put("/:id", checkAuth, upload.fields([
 postRouter.put("/:id/react", checkAuth, async (req, res) => {
     try {
         const { emoji } = req.body
+
+        // Validate emoji input
+        if (!emoji || typeof emoji !== 'string') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid emoji is required" 
+            })
+        }
+
         const post = await Post.findById(req.params.id)
 
         if (!post) {
@@ -742,43 +751,117 @@ postRouter.put("/:id/react", checkAuth, async (req, res) => {
 
         // Fetch user to get accurate name
         const user = await User.findById(userId)
-        const userName = user ? user.firstname : "User"
+        const userName = user ? `${user.firstname} ${user.lastname}` : "User"
 
         // Ensure reactions array exists
         if (!post.reactions) post.reactions = []
 
         const existingIndex = post.reactions.findIndex(r => r.user.toString() === userId)
 
+        let action = ''
         if (existingIndex > -1) {
             // Check if same emoji
             if (post.reactions[existingIndex].emoji === emoji) {
-                // Remove
+                // Remove - user clicked the same emoji to unreact
                 post.reactions.splice(existingIndex, 1)
+                action = 'removed'
             } else {
-                // Update
+                // Update - user changed to a different emoji
                 post.reactions[existingIndex].emoji = emoji
+                post.reactions[existingIndex].name = userName
                 post.reactions[existingIndex].timestamp = Date.now()
+                action = 'updated'
             }
         } else {
-            // Add
+            // Add - new reaction
             post.reactions.push({
                 user: userId,
                 name: userName,
                 emoji
             })
+            action = 'added'
         }
 
         await post.save()
 
+        // Calculate reaction statistics
+        const reactionStats = {}
+        post.reactions.forEach(reaction => {
+            reactionStats[reaction.emoji] = (reactionStats[reaction.emoji] || 0) + 1
+        })
+
         return res.status(200).json({
             success: true,
-            message: "Reaction updated",
-            reactions: post.reactions
+            message: `Reaction ${action}`,
+            action,
+            reactions: post.reactions,
+            reactionStats,
+            totalReactions: post.reactions.length,
+            userReaction: action === 'removed' ? null : emoji
         })
 
     } catch (error) {
         console.error("Reaction error:", error)
-        return res.status(500).json({ success: false, message: "Error updating reaction" })
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error updating reaction",
+            error: error.message 
+        })
+    }
+})
+
+// GET REACTION STATISTICS FOR A POST - Public
+postRouter.get("/:id/reactions", async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id).select('reactions')
+
+        if (!post) {
+            return res.status(404).json({ success: false, message: "Post not found" })
+        }
+
+        // Calculate reaction statistics
+        const reactionStats = {}
+        const reactions = post.reactions || []
+        
+        reactions.forEach(reaction => {
+            if (!reactionStats[reaction.emoji]) {
+                reactionStats[reaction.emoji] = {
+                    count: 0,
+                    users: []
+                }
+            }
+            reactionStats[reaction.emoji].count++
+            reactionStats[reaction.emoji].users.push({
+                userId: reaction.user,
+                name: reaction.name,
+                timestamp: reaction.timestamp
+            })
+        })
+
+        // Get user's reaction if authenticated
+        let userReaction = null
+        if (req.user && req.user.userId) {
+            const userReactionObj = reactions.find(r => r.user.toString() === req.user.userId)
+            if (userReactionObj) {
+                userReaction = userReactionObj.emoji
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            totalReactions: reactions.length,
+            reactionStats,
+            userReaction,
+            allReactions: reactions
+        })
+
+    } catch (error) {
+        console.error("Get reactions error:", error)
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error fetching reactions",
+            error: error.message 
+        })
     }
 })
 

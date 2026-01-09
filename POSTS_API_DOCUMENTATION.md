@@ -1682,6 +1682,8 @@ formData.append("title", "My Trek");
 - **Dedicated Endpoints:**
   - [Experiences API](./EXPERIENCES_API_DOCUMENTATION.md) - For sharing travel experiences
   - [Quick Reference](./EXPERIENCES_API_QUICK_REFERENCE.md) - Experience endpoints cheat sheet
+  - [Reactions API](./REACTIONS_API_DOCUMENTATION.md) - For post reactions and engagement
+  - [Reactions Quick Reference](./REACTIONS_QUICK_REFERENCE.md) - Fast implementation guide
 - **Related APIs:** 
   - [Itineraries API](./ITINERARY_API_DOCUMENTATION.md) - For trip planning
   - [Reviews API](./REVIEWS_API_DOCUMENTATION.md) - For rating experiences

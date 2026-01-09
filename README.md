@@ -27,6 +27,8 @@ Detailed guides for specific modules:
 - [⭐ Reviews & Ratings](REVIEWS_API_DOCUMENTATION.md) - Trust and safety protocols.
 - [🗺️ Itinerary Management](ITINERARY_API_DOCUMENTATION.md) - Planning and scheduling.
 - [📍 Location & Geospatial](LOCATION_API_DOCUMENTATION.md) - How mapping works.
+- [💬 Reactions API](REACTIONS_API_DOCUMENTATION.md) - Post reactions and engagement tracking.
+- [⚡ Reactions Quick Reference](REACTIONS_QUICK_REFERENCE.md) - Fast implementation guide for reactions.
 
 ---
 

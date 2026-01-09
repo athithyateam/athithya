@@ -468,4 +468,149 @@ itineraryRouter.delete("/:id", checkAuth, async (req, res) => {
     }
 })
 
+// TOGGLE REACTION ON ITINERARY - Authenticated users
+itineraryRouter.put("/:id/react", checkAuth, async (req, res) => {
+    try {
+        const { emoji } = req.body
+
+        // Validate emoji input
+        if (!emoji || typeof emoji !== 'string') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid emoji is required" 
+            })
+        }
+
+        const itinerary = await Post.findById(req.params.id)
+
+        if (!itinerary) {
+            return res.status(404).json({ success: false, message: "Itinerary not found" })
+        }
+
+        if (itinerary.postType !== 'plan') {
+            return res.status(400).json({ success: false, message: "This is not an itinerary" })
+        }
+
+        const userId = req.user.userId
+
+        // Fetch user to get accurate name
+        const user = await User.findById(userId)
+        const userName = user ? `${user.firstname} ${user.lastname}` : "User"
+
+        // Ensure reactions array exists
+        if (!itinerary.reactions) itinerary.reactions = []
+
+        const existingIndex = itinerary.reactions.findIndex(r => r.user.toString() === userId)
+
+        let action = ''
+        if (existingIndex > -1) {
+            // Check if same emoji
+            if (itinerary.reactions[existingIndex].emoji === emoji) {
+                // Remove - user clicked the same emoji to unreact
+                itinerary.reactions.splice(existingIndex, 1)
+                action = 'removed'
+            } else {
+                // Update - user changed to a different emoji
+                itinerary.reactions[existingIndex].emoji = emoji
+                itinerary.reactions[existingIndex].name = userName
+                itinerary.reactions[existingIndex].timestamp = Date.now()
+                action = 'updated'
+            }
+        } else {
+            // Add - new reaction
+            itinerary.reactions.push({
+                user: userId,
+                name: userName,
+                emoji
+            })
+            action = 'added'
+        }
+
+        await itinerary.save()
+
+        // Calculate reaction statistics
+        const reactionStats = {}
+        itinerary.reactions.forEach(reaction => {
+            reactionStats[reaction.emoji] = (reactionStats[reaction.emoji] || 0) + 1
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: `Reaction ${action}`,
+            action,
+            reactions: itinerary.reactions,
+            reactionStats,
+            totalReactions: itinerary.reactions.length,
+            userReaction: action === 'removed' ? null : emoji
+        })
+
+    } catch (error) {
+        console.error("Itinerary reaction error:", error)
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error updating reaction",
+            error: error.message 
+        })
+    }
+})
+
+// GET REACTION STATISTICS FOR AN ITINERARY - Public
+itineraryRouter.get("/:id/reactions", async (req, res) => {
+    try {
+        const itinerary = await Post.findById(req.params.id).select('reactions postType')
+
+        if (!itinerary) {
+            return res.status(404).json({ success: false, message: "Itinerary not found" })
+        }
+
+        if (itinerary.postType !== 'plan') {
+            return res.status(400).json({ success: false, message: "This is not an itinerary" })
+        }
+
+        // Calculate reaction statistics
+        const reactionStats = {}
+        const reactions = itinerary.reactions || []
+        
+        reactions.forEach(reaction => {
+            if (!reactionStats[reaction.emoji]) {
+                reactionStats[reaction.emoji] = {
+                    count: 0,
+                    users: []
+                }
+            }
+            reactionStats[reaction.emoji].count++
+            reactionStats[reaction.emoji].users.push({
+                userId: reaction.user,
+                name: reaction.name,
+                timestamp: reaction.timestamp
+            })
+        })
+
+        // Get user's reaction if authenticated
+        let userReaction = null
+        if (req.user && req.user.userId) {
+            const userReactionObj = reactions.find(r => r.user.toString() === req.user.userId)
+            if (userReactionObj) {
+                userReaction = userReactionObj.emoji
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            totalReactions: reactions.length,
+            reactionStats,
+            userReaction,
+            allReactions: reactions
+        })
+
+    } catch (error) {
+        console.error("Get itinerary reactions error:", error)
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error fetching reactions",
+            error: error.message 
+        })
+    }
+})
+
 module.exports = itineraryRouter
