@@ -76,12 +76,14 @@ const userRoutes = require("./routes/users");
 const postRoutes = require("./routes/posts");
 const reviewRoutes = require("./routes/reviews");
 const itineraryRoutes = require("./routes/itineraries");
+const searchRoutes = require("./routes/search");
 
 app.use("/api/auth", userRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/itineraries", itineraryRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/notifications", require("./routes/notifications"));
 
 app.get("/health", (req, res) => {
