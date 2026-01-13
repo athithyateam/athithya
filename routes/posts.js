@@ -1545,7 +1545,7 @@ postRouter.post("/services", checkAuth, upload.fields([
     }
 })
 
-// GET ALL SERVICES - Automatically filtered to postType: "service"
+// GET ALL SERVICES - Now returns EXPERIENCES (postType: "experience") for Explore page
 postRouter.get("/services", async (req, res) => {
     try {
         const {
@@ -1555,9 +1555,9 @@ postRouter.get("/services", async (req, res) => {
             page = 1, limit = 20
         } = req.query
 
-        // Build filter query with automatic service filter
+        // Build filter query - Changed to return EXPERIENCES for the Explore Experiences section
         const filter = {
-            postType: 'service',  // Automatically filter for services only
+            postType: 'experience',  // Changed from 'service' to 'experience'
             status: status || 'active'
         }
 
@@ -1576,9 +1576,10 @@ postRouter.get("/services", async (req, res) => {
 
         const skip = (Number(page) - 1) * Number(limit)
 
+        // Sort by most recent first (createdAt: -1) to show recent experiences
         const services = await Post.find(filter)
             .populate('user', 'firstname lastname email role avatar')
-            .sort({ isFeatured: -1, createdAt: -1 })
+            .sort({ createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)
 
