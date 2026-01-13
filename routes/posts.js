@@ -1557,8 +1557,12 @@ postRouter.get("/services", async (req, res) => {
 
         // Build filter query - Changed to return EXPERIENCES for the Explore Experiences section
         const filter = {
-            postType: 'experience',  // Changed from 'service' to 'experience'
-            status: status || 'active'
+            postType: 'experience'  // Changed from 'service' to 'experience'
+        }
+        
+        // Only filter by status if explicitly provided
+        if (status) {
+            filter.status = status
         }
 
         if (city) filter['location.city'] = new RegExp(city, 'i')
