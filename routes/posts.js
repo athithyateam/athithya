@@ -1112,7 +1112,7 @@ postRouter.get("/experiences", async (req, res) => {
 
         const experiences = await Post.find(filter)
             .populate('user', 'firstname lastname email role avatar')
-            .sort({ isFeatured: -1, createdAt: -1 })
+            .sort({ createdAt: -1 })
             .limit(Number(limit))
             .skip(skip)
 
