@@ -867,6 +867,131 @@ userrouter.get("/profile/:userId", async (req, res) => {
     }
 })
 
+// GET COMPLETE USER PROFILE - All data related to the user
+// Returns user info, posts, experiences, itineraries, reviews written by user, reviews received
+userrouter.get("/profile/:userId/complete", async (req, res) => {
+    try {
+        const { userId } = req.params
+        const { Post, Review, Itinerary } = require("../db/mongoose")
+
+        // Get user details (exclude sensitive fields)
+        const user = await User.findById(userId).select('-password -otp -otpExpires')
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        // Get all posts by this user (experiences, services, treks, plans)
+        const posts = await Post.find({
+            user: userId,
+            status: 'active'
+        }).sort({ createdAt: -1 })
+
+        // Separate posts by type
+        const experiences = posts.filter(p => p.postType === 'experience')
+        const services = posts.filter(p => p.postType === 'service')
+        const treks = posts.filter(p => p.postType === 'trek')
+        const plans = posts.filter(p => p.postType === 'plan')
+
+        // Get all itineraries created by this user
+        const itineraries = await Itinerary.find({ user: userId })
+            .sort({ createdAt: -1 })
+
+        // Get reviews WRITTEN BY this user (as a reviewer)
+        const reviewsWritten = await Review.find({ reviewer: userId })
+            .populate('host', 'firstname lastname avatar')
+            .populate('post', 'title postType')
+            .sort({ createdAt: -1 })
+
+        // Get reviews RECEIVED by this user (if host)
+        let reviewsReceived = []
+        let reviewStats = null
+        if (user.role === 'host') {
+            reviewsReceived = await Review.find({ host: userId })
+                .populate('reviewer', 'firstname lastname avatar')
+                .populate('post', 'title postType')
+                .sort({ createdAt: -1 })
+
+            if (reviewsReceived.length > 0) {
+                const totalRating = reviewsReceived.reduce((sum, review) => sum + review.rating, 0)
+                reviewStats = {
+                    totalReviews: reviewsReceived.length,
+                    averageRating: (totalRating / reviewsReceived.length).toFixed(1),
+                    ratings: {
+                        5: reviewsReceived.filter(r => r.rating === 5).length,
+                        4: reviewsReceived.filter(r => r.rating === 4).length,
+                        3: reviewsReceived.filter(r => r.rating === 3).length,
+                        2: reviewsReceived.filter(r => r.rating === 2).length,
+                        1: reviewsReceived.filter(r => r.rating === 1).length
+                    }
+                }
+            }
+        }
+
+        // Calculate statistics
+        const stats = {
+            posts: {
+                total: posts.length,
+                experiences: experiences.length,
+                services: services.length,
+                treks: treks.length,
+                plans: plans.length
+            },
+            itineraries: {
+                total: itineraries.length
+            },
+            reviews: {
+                written: reviewsWritten.length,
+                received: reviewsReceived.length
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                user: {
+                    _id: user._id,
+                    firstname: user.firstname,
+                    lastname: user.lastname,
+                    email: user.email,
+                    role: user.role,
+                    avatar: user.avatar,
+                    description: user.description,
+                    isVerified: user.isVerified,
+                    location: user.location,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt
+                },
+                stats,
+                posts: {
+                    all: posts,
+                    experiences,
+                    services,
+                    treks,
+                    plans
+                },
+                itineraries,
+                reviews: {
+                    written: reviewsWritten,
+                    received: user.role === 'host' ? reviewsReceived : []
+                },
+                reviewStats: user.role === 'host' ? reviewStats : null
+            }
+        })
+
+    } catch (error) {
+        console.error("Error fetching complete user profile:", error)
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch complete user profile",
+            error: error.message
+        })
+    }
+})
+
 // GET TOP-RATED HOSTS - Public
 // Returns hosts sorted by average rating from reviews
 userrouter.get("/top-rated/hosts", async (req, res) => {

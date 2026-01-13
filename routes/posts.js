@@ -1090,8 +1090,12 @@ postRouter.get("/experiences", async (req, res) => {
 
         // Build filter query with automatic experience filter
         const filter = {
-            postType: 'experience',  // Automatically filter for experiences only
-            status: status || 'active'
+            postType: 'experience'  // Automatically filter for experiences only
+        }
+
+        // Only filter by status if explicitly provided, otherwise get all
+        if (status) {
+            filter.status = status
         }
 
         if (city) filter['location.city'] = new RegExp(city, 'i')
