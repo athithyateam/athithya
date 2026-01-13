@@ -1580,6 +1580,10 @@ postRouter.get("/services", async (req, res) => {
 
         const skip = (Number(page) - 1) * Number(limit)
 
+        // Debug logging
+        console.log("🔍 Fetching experiences with filter:", JSON.stringify(filter))
+        console.log("📄 Page:", page, "Limit:", limit, "Skip:", skip)
+
         // Sort by most recent first (createdAt: -1) to show recent experiences
         const services = await Post.find(filter)
             .populate('user', 'firstname lastname email role avatar')
@@ -1588,6 +1592,11 @@ postRouter.get("/services", async (req, res) => {
             .skip(skip)
 
         const total = await Post.countDocuments(filter)
+
+        console.log("✅ Found", services.length, "experiences out of", total, "total")
+        if (services.length > 0) {
+            console.log("📅 Most recent experience created at:", services[0].createdAt)
+        }
 
         return res.status(200).json({
             success: true,
