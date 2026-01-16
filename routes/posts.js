@@ -1229,6 +1229,34 @@ postRouter.get("/experiences/recent", async (req, res) => {
     }
 })
 
+// GET LATEST EXPERIENCES - Simple endpoint for explore page (just the most recent experiences)
+postRouter.get("/experiences/latest", async (req, res) => {
+    try {
+        const { limit = 12 } = req.query
+
+        const experiences = await Post.find({
+            postType: 'experience',
+            status: 'active'
+        })
+            .populate('user', 'firstname lastname email role avatar')
+            .select('title subtitle description photos videos location price duration difficulty categories isFeatured rating createdAt updatedAt')
+            .sort({ createdAt: -1 })
+            .limit(Number(limit))
+
+        return res.status(200).json({
+            success: true,
+            count: experiences.length,
+            experiences
+        })
+    } catch (error) {
+        console.error("Get latest experiences error:", error)
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching latest experiences"
+        })
+    }
+})
+
 // GET MY EXPERIENCES - Experiences posted by logged-in user
 postRouter.get("/experiences/my/list", checkAuth, async (req, res) => {
     try {
