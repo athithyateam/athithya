@@ -735,9 +735,9 @@ postRouter.put("/:id/react", checkAuth, async (req, res) => {
 
         // Validate emoji input
         if (!emoji || typeof emoji !== 'string') {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Valid emoji is required" 
+            return res.status(400).json({
+                success: false,
+                message: "Valid emoji is required"
             })
         }
 
@@ -802,10 +802,10 @@ postRouter.put("/:id/react", checkAuth, async (req, res) => {
 
     } catch (error) {
         console.error("Reaction error:", error)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error updating reaction",
-            error: error.message 
+            error: error.message
         })
     }
 })
@@ -822,7 +822,7 @@ postRouter.get("/:id/reactions", async (req, res) => {
         // Calculate reaction statistics
         const reactionStats = {}
         const reactions = post.reactions || []
-        
+
         reactions.forEach(reaction => {
             if (!reactionStats[reaction.emoji]) {
                 reactionStats[reaction.emoji] = {
@@ -857,10 +857,10 @@ postRouter.get("/:id/reactions", async (req, res) => {
 
     } catch (error) {
         console.error("Get reactions error:", error)
-        return res.status(500).json({ 
-            success: false, 
+        return res.status(500).json({
+            success: false,
             message: "Error fetching reactions",
-            error: error.message 
+            error: error.message
         })
     }
 })
@@ -1170,15 +1170,15 @@ postRouter.get("/experiences/featured/list", async (req, res) => {
 // GET RECENT EXPERIENCES - Show recently posted experiences (last 7 days by default)
 postRouter.get("/experiences/recent", async (req, res) => {
     try {
-        const { 
-            days = 7, 
-            limit = 10, 
+        const {
+            days = 7,
+            limit = 10,
             page = 1,
             city,
             country,
             state,
             difficulty,
-            categories 
+            categories
         } = req.query
 
         // Calculate date threshold for recent posts
@@ -1703,11 +1703,11 @@ postRouter.get("/services", async (req, res) => {
             page = 1, limit = 20
         } = req.query
 
-        // Build filter query - Changed to return EXPERIENCES for the Explore Experiences section
+        // Build filter query - returns SERVICES (Experiences) for the Explore Experiences section
         const filter = {
-            postType: 'experience'  // Changed from 'service' to 'experience'
+            postType: 'service'
         }
-        
+
         // Only filter by status if explicitly provided
         if (status) {
             filter.status = status
