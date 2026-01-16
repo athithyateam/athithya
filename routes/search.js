@@ -105,8 +105,6 @@ searchRouter.get("/", async (req, res) => {
             Post.find(query)
                 .populate("user", "firstname lastname email avatar role")
                 .sort(sortOptions)
-                .skip(skip)
-                .limit(limitNum)
                 .lean(),
             Post.countDocuments(query)
         ]);

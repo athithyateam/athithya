@@ -1241,7 +1241,6 @@ postRouter.get("/experiences/latest", async (req, res) => {
             .populate('user', 'firstname lastname email role avatar')
             .select('title subtitle description photos videos location price duration difficulty categories isFeatured rating createdAt updatedAt')
             .sort({ createdAt: -1 })
-            .limit(Number(limit))
 
         return res.status(200).json({
             success: true,
