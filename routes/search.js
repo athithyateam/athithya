@@ -105,6 +105,8 @@ searchRouter.get("/", async (req, res) => {
             Post.find(query)
                 .populate("user", "firstname lastname email avatar role")
                 .sort(sortOptions)
+                .skip(skip)
+                .limit(limitNum)
                 .lean(),
             Post.countDocuments(query)
         ]);
@@ -311,9 +313,9 @@ searchRouter.get("/suggestions", async (req, res) => {
                 { "location.city": { $regex: q, $options: "i" } }
             ]
         })
-        .select("title location.city postType")
-        .limit(10)
-        .lean();
+            .select("title location.city postType")
+            .limit(10)
+            .lean();
 
         // Format suggestions
         const formatted = suggestions.map(item => ({
