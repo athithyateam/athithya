@@ -2,13 +2,13 @@ const express = require("express");
 const { Post } = require("../db/mongoose");
 const searchRouter = express.Router();
 
-// SEARCH API - Search across itineraries and experiences
-// GET /api/search?q=query&type=all|itinerary|experience&location=city&difficulty=Easy&category=Adventure
+// SEARCH API - Search across all posts: itineraries, experiences, treks, and services
+// GET /api/search?q=query&type=all|itinerary|experience|trek|service&location=city&difficulty=Easy&category=Adventure
 searchRouter.get("/", async (req, res) => {
     try {
         const {
             q, // search query
-            type = "all", // all, itinerary, experience
+            type = "all", // all, itinerary, experience, trek, service
             location, // city or country filter
             difficulty, // difficulty level for treks
             category, // category filter
@@ -30,12 +30,16 @@ searchRouter.get("/", async (req, res) => {
             query.postType = "plan";
         } else if (type === "experience") {
             query.postType = "experience";
+        } else if (type === "trek") {
+            query.postType = "trek";
+        } else if (type === "service") {
+            query.postType = "service";
         } else if (type === "all") {
-            query.postType = { $in: ["plan", "experience"] };
+            query.postType = { $in: ["plan", "experience", "trek", "service"] };
         } else {
             return res.status(400).json({
                 success: false,
-                message: "Invalid type parameter. Must be 'all', 'itinerary', or 'experience'"
+                message: "Invalid type parameter. Must be 'all', 'itinerary', 'experience', 'trek', or 'service'"
             });
         }
 
