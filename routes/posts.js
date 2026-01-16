@@ -189,6 +189,75 @@ postRouter.post("/", checkAuth, upload.fields([
     }
 })
 
+// REACT TO POST - Emoji reaction (Like, Heart, Fire, etc.)
+postRouter.put("/:postId/react", checkAuth, async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { emoji } = req.body;
+        const userId = req.user.userId;
+
+        if (!emoji) {
+            return res.status(400).json({ success: false, message: "Emoji is required" });
+        }
+
+        const post = await Post.findById(postId);
+        if (!post) {
+            return res.status(404).json({ success: false, message: "Post not found" });
+        }
+
+        const user = await User.findById(userId);
+        const userName = user ? `${user.firstname} ${user.lastname}` : "Someone";
+
+        // Check if user already reacted
+        const existingReactionIndex = post.reactions.findIndex(
+            (r) => r.user.toString() === userId
+        );
+
+        let action = "added";
+        if (existingReactionIndex > -1) {
+            if (post.reactions[existingReactionIndex].emoji === emoji) {
+                // If same emoji, remove reaction (toggle off)
+                post.reactions.splice(existingReactionIndex, 1);
+                action = "removed";
+            } else {
+                // If different emoji, update reaction
+                post.reactions[existingReactionIndex].emoji = emoji;
+                post.reactions[existingReactionIndex].timestamp = Date.now();
+                action = "updated";
+            }
+        } else {
+            // Add new reaction
+            post.reactions.push({
+                user: userId,
+                name: userName,
+                emoji,
+                timestamp: Date.now()
+            });
+        }
+
+        await post.save();
+
+        // Calculate reaction stats
+        const reactionStats = {};
+        post.reactions.forEach((r) => {
+            reactionStats[r.emoji] = (reactionStats[r.emoji] || 0) + 1;
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: `Reaction ${action === "removed" ? "removed" : action === "updated" ? "updated" : "added"}`,
+            action,
+            reactions: post.reactions,
+            reactionStats,
+            totalReactions: post.reactions.length,
+            userReaction: action === "removed" ? null : emoji
+        });
+    } catch (error) {
+        console.error("React to post error:", error);
+        return res.status(500).json({ success: false, message: "Error reacting to post" });
+    }
+});
+
 // GET ALL POSTS - Public (with filtering)
 postRouter.get("/", async (req, res) => {
     try {

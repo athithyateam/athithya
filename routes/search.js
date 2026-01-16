@@ -101,15 +101,20 @@ searchRouter.get("/", async (req, res) => {
         const skip = (pageNum - 1) * limitNum;
 
         // Execute query
-        const [results, totalCount] = await Promise.all([
-            Post.find(query)
-                .populate("user", "firstname lastname email avatar role")
-                .sort(sortOptions)
-                .skip(skip)
-                .limit(limitNum)
-                .lean(),
-            Post.countDocuments(query)
-        ]);
+        let results = await Post.find(query)
+            .populate("user", "firstname lastname email avatar role")
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+
+        const totalCount = await Post.countDocuments(query);
+
+        // Transformation to match requested output (flatten rating)
+        results = results.map(item => ({
+            ...item,
+            rating: item.rating?.average || 0
+        }));
 
         // Calculate pagination metadata
         const totalPages = Math.ceil(totalCount / limitNum);
