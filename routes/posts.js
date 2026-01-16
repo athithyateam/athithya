@@ -1167,6 +1167,68 @@ postRouter.get("/experiences/featured/list", async (req, res) => {
     }
 })
 
+// GET RECENT EXPERIENCES - Show recently posted experiences (last 7 days by default)
+postRouter.get("/experiences/recent", async (req, res) => {
+    try {
+        const { 
+            days = 7, 
+            limit = 10, 
+            page = 1,
+            city,
+            country,
+            state,
+            difficulty,
+            categories 
+        } = req.query
+
+        // Calculate date threshold for recent posts
+        const dateThreshold = new Date()
+        dateThreshold.setDate(dateThreshold.getDate() - Number(days))
+
+        // Build filter query for recent experiences
+        const filter = {
+            postType: 'experience',
+            status: 'active',
+            createdAt: { $gte: dateThreshold }
+        }
+
+        // Optional location filters
+        if (city) filter['location.city'] = new RegExp(city, 'i')
+        if (state) filter['location.state'] = new RegExp(state, 'i')
+        if (country) filter['location.country'] = new RegExp(country, 'i')
+        if (difficulty) filter.difficulty = difficulty
+        if (categories) filter.categories = { $in: categories.split(',') }
+
+        const skip = (Number(page) - 1) * Number(limit)
+
+        const recentExperiences = await Post.find(filter)
+            .populate('user', 'firstname lastname email role avatar')
+            .select('title subtitle description photos location price duration difficulty categories isFeatured rating createdAt updatedAt')
+            .sort({ createdAt: -1 })
+            .limit(Number(limit))
+            .skip(skip)
+
+        const total = await Post.countDocuments(filter)
+
+        return res.status(200).json({
+            success: true,
+            count: recentExperiences.length,
+            total,
+            page: Number(page),
+            totalPages: Math.ceil(total / Number(limit)),
+            daysFilter: Number(days),
+            dateThreshold,
+            recentExperiences
+        })
+    } catch (error) {
+        console.error("Get recent experiences error:", error)
+        return res.status(500).json({
+            success: false,
+            message: "Error fetching recent experiences"
+        })
+    }
+})
+
 // GET MY EXPERIENCES - Experiences posted by logged-in user
 postRouter.get("/experiences/my/list", checkAuth, async (req, res) => {
     try {
@@ -1220,7 +1282,7 @@ postRouter.get("/experiences/:id", async (req, res) => {
         const experience = await Post.findOne({
             _id: req.params.id,
             postType: 'experience'  // Ensure it's an experience
-        }).populate('user', 'firstname lastname email role')
+        }).populate('user', 'firstname lastname email role avatar description location')
 
         if (!experience) {
             return res.status(404).json({
@@ -1229,9 +1291,67 @@ postRouter.get("/experiences/:id", async (req, res) => {
             })
         }
 
+        // Get reviews for this experience
+        const reviews = await Review.find({ post: req.params.id })
+            .populate('reviewer', 'firstname lastname avatar role')
+            .sort({ createdAt: -1 })
+
+        // Calculate reaction statistics
+        const reactionStats = {}
+        if (experience.reactions && experience.reactions.length > 0) {
+            experience.reactions.forEach(reaction => {
+                if (reaction.emoji) {
+                    reactionStats[reaction.emoji] = (reactionStats[reaction.emoji] || 0) + 1
+                }
+            })
+        }
+
+        // Get other experiences by the same user (excluding current one)
+        const otherExperiences = await Post.find({
+            user: experience.user._id,
+            postType: 'experience',
+            status: 'active',
+            _id: { $ne: req.params.id }
+        })
+            .select('title subtitle photos location price duration difficulty categories rating')
+            .limit(4)
+            .sort({ createdAt: -1 })
+
+        // Get similar experiences based on categories and location
+        const similarExperiences = await Post.find({
+            postType: 'experience',
+            status: 'active',
+            _id: { $ne: req.params.id },
+            $or: [
+                { categories: { $in: experience.categories || [] } },
+                { 'location.city': experience.location?.city },
+                { 'location.state': experience.location?.state }
+            ]
+        })
+            .populate('user', 'firstname lastname avatar')
+            .select('title subtitle photos location price duration difficulty categories rating')
+            .limit(6)
+            .sort({ 'rating.average': -1, createdAt: -1 })
+
         return res.status(200).json({
             success: true,
-            experience
+            experience: {
+                ...experience.toObject(),
+                reactionStats,
+                reactionCount: experience.reactions?.length || 0
+            },
+            reviews: {
+                count: reviews.length,
+                data: reviews
+            },
+            otherExperiences: {
+                count: otherExperiences.length,
+                data: otherExperiences
+            },
+            similarExperiences: {
+                count: similarExperiences.length,
+                data: similarExperiences
+            }
         })
     } catch (error) {
         console.error("Get experience error:", error)
