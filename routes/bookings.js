@@ -44,7 +44,7 @@ bookingRouter.post("/", checkAuth, async (req, res) => {
         }
 
         // Check if user is trying to book their own post
-        if (post.user._id.toString() === req.user._id.toString()) {
+        if (post.user._id.toString() === req.user.userId.toString()) {
             return res.status(400).json({
                 success: false,
                 message: "You cannot book your own trip"
@@ -65,7 +65,7 @@ bookingRouter.post("/", checkAuth, async (req, res) => {
 
         // Create the booking
         const booking = new Booking({
-            guest: req.user._id,
+            guest: req.user.userId,
             host: post.user._id,
             post: postId,
             postType: post.postType,
@@ -84,9 +84,9 @@ bookingRouter.post("/", checkAuth, async (req, res) => {
         // Create notification for the host
         const notification = new Notification({
             recipient: post.user._id,
-            sender: req.user._id,
+            sender: req.user.userId,
             title: "New Booking Request",
-            message: `${req.user.firstname} ${req.user.lastname} has requested to book "${post.title}"`,
+            message: `${req.user.firstname || 'Someone'} ${req.user.lastname || ''} has requested to book "${post.title}"`,
             type: 'info',
             link: `/bookings/${booking._id}`,
             metadata: { postId: post._id }
@@ -124,7 +124,7 @@ bookingRouter.get("/host/requests", checkAuth, async (req, res) => {
         const { status, page = 1, limit = 10 } = req.query
 
         // Build query
-        const query = { host: req.user._id }
+        const query = { host: req.user.userId }
         if (status) {
             query.status = status
         }
@@ -141,9 +141,9 @@ bookingRouter.get("/host/requests", checkAuth, async (req, res) => {
             .limit(parseInt(limit))
 
         // Get counts by status
-        const pendingCount = await Booking.countDocuments({ host: req.user._id, status: 'pending' })
-        const acceptedCount = await Booking.countDocuments({ host: req.user._id, status: 'accepted' })
-        const declinedCount = await Booking.countDocuments({ host: req.user._id, status: 'declined' })
+        const pendingCount = await Booking.countDocuments({ host: req.user.userId, status: 'pending' })
+        const acceptedCount = await Booking.countDocuments({ host: req.user.userId, status: 'accepted' })
+        const declinedCount = await Booking.countDocuments({ host: req.user.userId, status: 'declined' })
 
         res.status(200).json({
             success: true,
@@ -195,7 +195,7 @@ bookingRouter.patch("/:bookingId/accept", checkAuth, async (req, res) => {
         }
 
         // Check if the user is the host
-        if (booking.host.toString() !== req.user._id.toString()) {
+        if (booking.host.toString() !== req.user.userId.toString()) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to accept this booking"
@@ -219,7 +219,7 @@ bookingRouter.patch("/:bookingId/accept", checkAuth, async (req, res) => {
         // Create notification for the guest
         const notification = new Notification({
             recipient: booking.guest._id,
-            sender: req.user._id,
+            sender: req.user.userId,
             title: "Booking Accepted",
             message: `Your booking request for "${booking.postTitle}" has been accepted!`,
             type: 'success',
@@ -268,7 +268,7 @@ bookingRouter.patch("/:bookingId/decline", checkAuth, async (req, res) => {
         }
 
         // Check if the user is the host
-        if (booking.host.toString() !== req.user._id.toString()) {
+        if (booking.host.toString() !== req.user.userId.toString()) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to decline this booking"
@@ -292,7 +292,7 @@ bookingRouter.patch("/:bookingId/decline", checkAuth, async (req, res) => {
         // Create notification for the guest
         const notification = new Notification({
             recipient: booking.guest._id,
-            sender: req.user._id,
+            sender: req.user.userId,
             title: "Booking Declined",
             message: `Your booking request for "${booking.postTitle}" has been declined`,
             type: 'warning',
@@ -340,8 +340,8 @@ bookingRouter.get("/:bookingId", checkAuth, async (req, res) => {
         }
 
         // Check if user is authorized to view this booking
-        if (booking.guest._id.toString() !== req.user._id.toString() &&
-            booking.host._id.toString() !== req.user._id.toString()) {
+        if (booking.guest._id.toString() !== req.user.userId.toString() &&
+            booking.host._id.toString() !== req.user.userId.toString()) {
             return res.status(403).json({
                 success: false,
                 message: "You are not authorized to view this booking"
@@ -373,7 +373,7 @@ bookingRouter.get("/guest/my-bookings", checkAuth, async (req, res) => {
         const { status, page = 1, limit = 10 } = req.query
 
         // Build query
-        const query = { guest: req.user._id }
+        const query = { guest: req.user.userId }
         if (status) {
             query.status = status
         }
