@@ -81,12 +81,16 @@ bookingRouter.post("/", checkAuth, async (req, res) => {
 
         await booking.save()
 
+        // Fetch guest details for the notification
+        const guestUser = await User.findById(req.user.userId)
+        const guestName = guestUser ? `${guestUser.firstname} ${guestUser.lastname}` : "A traveler"
+
         // Create notification for the host
         const notification = new Notification({
             recipient: post.user._id,
             sender: req.user.userId,
             title: "New Booking Request",
-            message: `${req.user.firstname || 'Someone'} ${req.user.lastname || ''} has requested to book "${post.title}"`,
+            message: `${guestName} has requested to book "${post.title}"`,
             type: 'info',
             link: `/bookings/${booking._id}`,
             metadata: { postId: post._id }
