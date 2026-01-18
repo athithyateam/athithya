@@ -51,14 +51,16 @@ bookingRouter.post("/", checkAuth, async (req, res) => {
             })
         }
 
-        // Calculate total amount
+        // Calculate total amount safely
         let totalAmount = 0
-        if (post.price.perPerson) {
-            totalAmount = post.price.perPerson * numberOfPeople
-        } else if (post.price.amount) {
-            totalAmount = post.price.amount
-        } else if (post.price.total) {
-            totalAmount = post.price.total
+        if (post.price) {
+            if (post.price.perPerson) {
+                totalAmount = post.price.perPerson * numberOfPeople
+            } else if (post.price.amount) {
+                totalAmount = post.price.amount
+            } else if (post.price.total) {
+                totalAmount = post.price.total
+            }
         }
 
         // Create the booking
@@ -338,7 +340,7 @@ bookingRouter.get("/:bookingId", checkAuth, async (req, res) => {
         }
 
         // Check if user is authorized to view this booking
-        if (booking.guest._id.toString() !== req.user._id.toString() && 
+        if (booking.guest._id.toString() !== req.user._id.toString() &&
             booking.host._id.toString() !== req.user._id.toString()) {
             return res.status(403).json({
                 success: false,
