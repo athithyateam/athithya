@@ -240,10 +240,37 @@ const notificationSchema = new mongoose.Schema({
 
 notificationSchema.index({ recipient: 1, createdAt: -1 })
 
+// Booking Schema
+const bookingSchema = new mongoose.Schema({
+    guest: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
+    host: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
+    post: { type: mongoose.Schema.Types.ObjectId, ref: 'post', required: true },
+    postType: { type: String, enum: ['experience', 'service', 'plan', 'trek'], required: true },
+    postTitle: { type: String, required: true },
+    numberOfPeople: { type: Number, required: true, min: 1 },
+    totalAmount: { type: Number, required: true, min: 0 },
+    bookingDate: { type: Date, required: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date },
+    status: {
+        type: String,
+        enum: ['pending', 'accepted', 'declined', 'cancelled', 'completed'],
+        default: 'pending'
+    },
+    guestMessage: { type: String, maxlength: 500 },
+    hostResponse: { type: String, maxlength: 500 },
+    respondedAt: { type: Date }
+}, { timestamps: true })
+
+bookingSchema.index({ guest: 1, createdAt: -1 })
+bookingSchema.index({ host: 1, status: 1, createdAt: -1 })
+bookingSchema.index({ post: 1, status: 1 })
+
 const User = mongoose.model("user", userSchema)
 const OTP = mongoose.model("otp", otpSchema)
 const Post = mongoose.model("post", postSchema)
 const Review = mongoose.model("review", reviewSchema)
 const Notification = mongoose.model("notification", notificationSchema)
+const Booking = mongoose.model("booking", bookingSchema)
 
-module.exports = { connectDB, User, OTP, Post, Review, Notification }
+module.exports = { connectDB, User, OTP, Post, Review, Notification, Booking }
